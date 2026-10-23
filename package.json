@@ -1,0 +1,32 @@
+{
+  "name": "grind",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview --host",
+    "icons": "node scripts/make-icons.mjs",
+    "typecheck": "tsc -b --noEmit"
+  },
+  "dependencies": {
+    "idb-keyval": "^6.3.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "workbox-precaching": "^7.4.1",
+    "workbox-routing": "^7.4.1",
+    "zustand": "^5.0.16"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "sharp": "^0.35.5",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.5",
+    "vite-plugin-pwa": "^2.0.0",
+    "web-push": "^3.6.7"
+  }
+}
