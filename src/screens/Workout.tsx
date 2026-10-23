@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { EXERCISES } from '../data/exercises'
 import { SESSIONS } from '../data/sessions'
 import { ExerciseBlock } from '../components/ExerciseInfo'
@@ -76,13 +76,18 @@ export function RestTimer({ seconds, resetKey, onDone, nextLabel, feedback }: {
 function TimedWork({ step, onDone }: { step: Step; onDone: () => void }) {
   const setTimeTarget = useStore((s) => s.setTimeTarget)
   const t = useCountdown(step.duration ?? 30, { prep: 3, autoStart: !!step.autoStart, resetKey: step.key, onEnd: onDone })
+  const ringRef = useRef<HTMLDivElement>(null)
+  const running = t.state === 'run' || t.state === 'prep'
+  useEffect(() => {
+    if (running) ringRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [running])
   const changeTarget = (d: number) => {
     t.add(d)
     if (step.phase === 'main' && step.ex) setTimeTarget(step.ex, Math.max(5, (step.duration ?? 30) + d))
   }
   return (
     <div className="stack" style={{ alignItems: 'center' }}>
-      <div className="timer">
+      <div className="timer" ref={ringRef}>
         <Ring value={t.state === 'idle' ? t.total : t.remaining} total={t.total}>
           {t.state === 'prep' ? <>{t.prepLeft}<small>prépare-toi</small></> : <>{fmtTime(t.state === 'idle' ? t.total : t.remaining)}<small>{step.side ? `côté ${step.side}` : 'secondes'}</small></>}
         </Ring>
@@ -96,7 +101,7 @@ function TimedWork({ step, onDone }: { step: Step; onDone: () => void }) {
       )}
       <div className="workout-actions" style={{ width: '100%' }}>
         {t.state === 'idle' && <button className="btn primary big block" onClick={() => { unlockAudio(); t.start() }}><IconPlay /> Démarrer</button>}
-        {(t.state === 'run' || t.state === 'prep') && <button className="btn big block" onClick={t.pause}><IconPause /> Pause</button>}
+        {running && <button className="btn big block" onClick={t.pause}><IconPause /> Pause · {t.state === 'prep' ? `départ dans ${t.prepLeft}` : fmtTime(t.remaining)}</button>}
         {t.state === 'paused' && <button className="btn primary big block" onClick={t.resume}><IconPlay /> Reprendre</button>}
         {t.state !== 'idle' && <button className="btn sm ghost" onClick={onDone}>Terminer maintenant</button>}
       </div>
