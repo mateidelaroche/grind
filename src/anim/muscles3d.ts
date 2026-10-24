@@ -1,5 +1,5 @@
 // Mannequin « écorché » : chaque muscle est un ellipsoïde accroché à un os du squelette 3D,
-// placé dans le repère local de l'os (devant / côté), et coloré s'il travaille.
+// placé dans le repère local de l'os (devant / côté), et coloré selon son rôle.
 import * as THREE from 'three'
 import type { Muscle, Work } from '../data/muscles'
 import type { JointName } from './rig'
@@ -8,6 +8,7 @@ import { add3, mul3, norm3, sub3, type Joints3, type V3 } from './skeleton3d'
 export const MUSCLE_IDLE = '#e9edf3'
 export const MUSCLE_PRIMARY = '#ef4444'
 export const MUSCLE_SECONDARY = '#fb923c'
+export const MUSCLE_STAB = '#fde047'
 const BASE = '#566178'
 
 type Bone = 'torso' | 'ua' | 'fa' | 'th' | 'sh'
@@ -18,26 +19,33 @@ const SPECS: Spec[] = [
   // Tronc (t = 0 au bassin, 1 au cou)
   { m: 'base', bone: 'torso', t: 0.72, f: 0, s: 0, r: [13, 7.2, 10.2] },
   { m: 'base', bone: 'torso', t: 0.02, f: -0.5, s: 0, r: [7, 6.4, 9.6] },
-  { m: 'pecs', bone: 'torso', t: 0.8, f: 6, s: 5, r: [6.5, 2.7, 6], pair: true },
+  { m: 'pecHaut', bone: 'torso', t: 0.86, f: 6, s: 5.2, r: [3.6, 2.4, 6], pair: true },
+  { m: 'pecBas', bone: 'torso', t: 0.74, f: 6.2, s: 5, r: [5, 2.8, 6.2], pair: true },
   ...[0.2, 0.36, 0.52].map((t): Spec => ({ m: 'abdos', bone: 'torso', t, f: 7.3, s: 2.4, r: [3.6, 1.6, 2.3], pair: true })),
-  { m: 'none', bone: 'torso', t: 0.66, f: 3.4, s: 8.6, r: [6, 3, 2], pair: true },
+  { m: 'dentele', bone: 'torso', t: 0.64, f: 3.4, s: 8.6, r: [6, 3, 2], pair: true },
   { m: 'obliques', bone: 'torso', t: 0.36, f: 2.6, s: 7.6, r: [9, 3.6, 2.3], pair: true },
-  { m: 'dorsaux', bone: 'torso', t: 0.62, f: -3.4, s: 8.2, r: [12, 3.2, 3.3], pair: true },
-  { m: 'trapezes', bone: 'torso', t: 0.88, f: -5.6, s: 3.4, r: [9, 2.4, 5], pair: true },
-  { m: 'trapezes', bone: 'torso', t: 1.0, f: -2.2, s: 4.8, r: [4, 3, 5], pair: true },
+  { m: 'grandDorsal', bone: 'torso', t: 0.6, f: -3.4, s: 8.2, r: [12, 3.2, 3.3], pair: true },
+  { m: 'milieuDos', bone: 'torso', t: 0.8, f: -6.2, s: 3, r: [8, 2.2, 3.6], pair: true },
+  { m: 'trapHaut', bone: 'torso', t: 1.0, f: -2.4, s: 4.8, r: [4.4, 3, 5], pair: true },
   { m: 'lombaires', bone: 'torso', t: 0.3, f: -7, s: 2.6, r: [11, 2.2, 2.4], pair: true },
-  { m: 'fessiers', bone: 'torso', t: -0.07, f: -5.6, s: 4.6, r: [7, 4.6, 5], pair: true },
+  { m: 'fessiers', bone: 'torso', t: -0.1, f: -5.6, s: 4.4, r: [6.4, 4.6, 5], pair: true },
+  { m: 'moyenFessier', bone: 'torso', t: 0.04, f: -2.4, s: 8.2, r: [4.2, 3.6, 2.6], pair: true },
+  { m: 'flechisseurs', bone: 'torso', t: -0.02, f: 5.6, s: 5.4, r: [4.2, 1.8, 2.4], pair: true },
   // Bras (épaule → coude), avant-bras (coude → poignet)
-  { m: 'epaules', bone: 'ua', t: 0.1, f: 0, s: 1.2, r: [7.5, 5.2, 5.2] },
-  { m: 'biceps', bone: 'ua', t: 0.55, f: 2.4, s: 0, r: [8.5, 2.7, 2.6] },
+  { m: 'deltAvant', bone: 'ua', t: 0.12, f: 2.6, s: 0.4, r: [7, 2.8, 3.8] },
+  { m: 'deltLat', bone: 'ua', t: 0.1, f: 0, s: 2.6, r: [7.2, 3.6, 2.8] },
+  { m: 'deltArr', bone: 'ua', t: 0.12, f: -2.6, s: 0.4, r: [7, 2.8, 3.8] },
+  { m: 'biceps', bone: 'ua', t: 0.56, f: 2.4, s: -0.2, r: [8.5, 2.7, 2.5] },
+  { m: 'brachial', bone: 'ua', t: 0.72, f: 1.2, s: 2.2, r: [5.5, 2, 2] },
   { m: 'triceps', bone: 'ua', t: 0.5, f: -2.4, s: 0, r: [10, 2.9, 2.8] },
   { m: 'avantbras', bone: 'fa', t: 0.3, f: 0.6, s: 0, r: [8.5, 3, 3.2] },
   // Cuisse (hanche → genou), jambe (genou → cheville)
-  { m: 'quadriceps', bone: 'th', t: 0.48, f: 2.6, s: 0.5, r: [15, 4, 4.6] },
+  { m: 'quadriceps', bone: 'th', t: 0.45, f: 2.6, s: 0.5, r: [14, 4, 4.4] },
   { m: 'quadriceps', bone: 'th', t: 0.52, f: 0.8, s: 3.2, r: [13, 3.4, 3] },
-  { m: 'none', bone: 'th', t: 0.36, f: 0, s: -3, r: [11, 3.4, 2.6] },
+  { m: 'vasteInterne', bone: 'th', t: 0.8, f: 2, s: -2.4, r: [5.5, 3, 3] },
+  { m: 'adducteurs', bone: 'th', t: 0.36, f: 0, s: -3, r: [11, 3.4, 2.6] },
   { m: 'ischios', bone: 'th', t: 0.5, f: -2.8, s: 0, r: [14, 3.6, 4.2] },
-  { m: 'mollets', bone: 'sh', t: 0.28, f: -2.4, s: 0, r: [9.5, 3.3, 3.2] },
+  { m: 'mollets', bone: 'sh', t: 0.28, f: -2.4, s: -0.6, r: [9.5, 3.3, 3] },
   { m: 'mollets', bone: 'sh', t: 0.3, f: -1.6, s: 2.2, r: [8.5, 2.6, 2.4] },
   { m: 'tibias', bone: 'sh', t: 0.38, f: 2, s: 0.8, r: [10, 1.7, 1.8] },
 ]
@@ -68,9 +76,10 @@ export function buildMuscles(work: Work | undefined, shadowed: <T extends THREE.
   const idle = mat(MUSCLE_IDLE)
   const prim = mat(MUSCLE_PRIMARY, 0.28)
   const sec = mat(MUSCLE_SECONDARY, 0.18)
+  const stab = mat(MUSCLE_STAB, 0.1)
   const base = new THREE.MeshStandardMaterial({ color: BASE, roughness: 0.7 })
   const geo = new THREE.SphereGeometry(1, 24, 16)
-  const matOf = (m: Spec['m']) => (m === 'base' ? base : m === 'none' ? idle : work?.p.includes(m) ? prim : work?.s.includes(m) ? sec : idle)
+  const matOf = (m: Spec['m']) => (m === 'base' ? base : m === 'none' ? idle : work?.p.includes(m) ? prim : work?.s.includes(m) ? sec : work?.st.includes(m) ? stab : idle)
 
   // Une instance par côté (proche N / éloigné F) pour les muscles pairs et ceux des membres.
   const items: { spec: Spec; side: 'N' | 'F' | ''; mesh: THREE.Mesh }[] = []

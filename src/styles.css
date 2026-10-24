@@ -234,3 +234,7 @@ a.btn { text-decoration: none; color: var(--text); }
 .mmap-side svg { width: 100%; height: auto; display: block; }
 .mmap-side figcaption { font-size: 11px; color: var(--text-3); }
 .mmap-legend { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.mmap-sel { text-align: center; min-height: 18px; }
+.mmap-key { display: flex; flex-wrap: wrap; gap: 4px 12px; justify-content: center; }
+.mmap-key > span { display: inline-flex; align-items: center; gap: 5px; }
+.chip.on { border-color: var(--accent-hi); color: var(--text); }

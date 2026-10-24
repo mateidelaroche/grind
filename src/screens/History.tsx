@@ -12,7 +12,7 @@ import { toast } from '../components/ui'
 import { addDays, formatDate, fromISO, levelOf, mondayOf, suggestions, today } from '../lib/program'
 import { useStore } from '../store'
 import type { Workout } from '../types'
-import { workOfMany } from '../data/muscles'
+import { ALL_MUSCLES, MUSCLE_LABEL, setsPerMuscle, workOfMany, workOfSession } from '../data/muscles'
 import MuscleMap from '../components/MuscleMap'
 
 const minutes = (w: Workout) => (w.endedAt ? Math.max(1, Math.round((w.endedAt - w.startedAt) / 60000)) : undefined)
@@ -100,6 +100,7 @@ function Sessions({ onOpen }: { onOpen: (id: string) => void }) {
         <BarChart data={perWeek} target={3} />
         <div className="tiny muted">Pointillés : objectif de 3 séances.</div>
       </div>
+      <WeekMuscles />
       <div className="section-title">Séances</div>
       {done.length === 0 && <div className="muted small">Aucune séance pour l’instant. La première est la plus importante 💪</div>}
       {done.map((w) => (
@@ -115,6 +116,32 @@ function Sessions({ onOpen }: { onOpen: (id: string) => void }) {
         </button>
       ))}
     </>
+  )
+}
+
+/** Bilan des 7 derniers jours : séries par muscle, et les zones oubliées. */
+function WeekMuscles() {
+  const workouts = useStore((s) => s.workouts)
+  const from = addDays(today(), -6)
+  const sets = workouts.filter((w) => w.date >= from && w.endedAt).flatMap((w) => Object.values(w.sets))
+  const heat = setsPerMuscle(sets)
+  const total = Object.values(heat).reduce((a, v) => a + v, 0)
+  // Zones que le programme travaille mais qui n'ont rien reçu cette semaine
+  const programmed = new Set((['A', 'B', 'C'] as const).flatMap((sid) => workOfSession(sid).p))
+  const missed = ALL_MUSCLES.filter((m) => programmed.has(m) && heat[m] === 0)
+  return (
+    <div className="card">
+      <div style={{ fontWeight: 700 }}>Muscles des 7 derniers jours</div>
+      {total === 0 ? (
+        <div className="small muted">Fais une séance : la carte se colorera selon le nombre de séries reçues par chaque muscle.</div>
+      ) : (
+        <>
+          <MuscleMap heat={heat} />
+          {missed.length > 0 && <div className="small"><b>Pas travaillés cette semaine :</b> <span className="muted">{missed.map((m) => MUSCLE_LABEL[m]).join(', ')}</span></div>}
+          <div className="tiny muted">Une série compte 1 pour les muscles principaux, ½ pour les secondaires. Repère : 8 à 12 séries par semaine pour un muscle que tu veux faire grossir.</div>
+        </>
+      )}
+    </div>
   )
 }
 
