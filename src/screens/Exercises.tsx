@@ -68,7 +68,7 @@ export function ExerciseDetail({ id, onBack }: { id: string; onBack: () => void 
         <button className="icon-btn" onClick={onBack} aria-label="Retour"><IconBack /></button>
         <div className="grow ex-name">{ex.name}</div>
       </div>
-      <Demo anim={animOf(id, lvl)} band={level?.band} work={workOf(id)} />
+      <Demo anim={animOf(id, lvl)} band={level?.band} />
       <div className="small muted">{ex.muscles}</div>
       <MuscleMap work={workOf(id)} />
       <GearChips gear={gearForExercise(id, lvl)} />

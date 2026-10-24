@@ -6,32 +6,28 @@ import { BAND_COLORS } from './Figure'
 import { cycleLength, FLOOR, poseAt, type AnimDef, type Target } from './rig'
 import { skeleton3d, type Joints3, type V3 } from './skeleton3d'
 import type { Band } from '../types'
-import type { Work } from '../data/muscles'
-import { buildMuscles } from './muscles3d'
 
-// Écorché : « squelette » gris, muscles posés dessus (voir muscles3d.ts).
-const BODY = '#5d687e'
-const BODY_FAR = '#4f596d'
-const HEAD = '#cfd6e1'
+const BODY = '#d9e0ea'
+const BODY_FAR = '#9aa6b8'
 const SCENE = '#243046'
 const SCENE_HI = '#33415a'
 
 type Seg = { a: keyof Joints3; b: keyof Joints3; r: number; far?: boolean }
 const SEGS: Seg[] = [
-  { a: 'pelvis', b: 'spineMid', r: 7.4 },
-  { a: 'spineMid', b: 'neck', r: 7.6 },
-  { a: 'shoulderN', b: 'shoulderF', r: 4.5 },
-  { a: 'hipN', b: 'hipF', r: 6 },
-  { a: 'neck', b: 'head', r: 3.4 },
-  { a: 'shoulderN', b: 'elbowN', r: 3 }, { a: 'elbowN', b: 'handN', r: 2.5 },
-  { a: 'shoulderF', b: 'elbowF', r: 3, far: true }, { a: 'elbowF', b: 'handF', r: 2.5, far: true },
-  { a: 'hipN', b: 'kneeN', r: 4.4 }, { a: 'kneeN', b: 'ankleN', r: 3.2 }, { a: 'ankleN', b: 'toeN', r: 2.8 },
-  { a: 'hipF', b: 'kneeF', r: 4.4, far: true }, { a: 'kneeF', b: 'ankleF', r: 3.2, far: true }, { a: 'ankleF', b: 'toeF', r: 2.8, far: true },
+  { a: 'pelvis', b: 'spineMid', r: 9.5 },
+  { a: 'spineMid', b: 'neck', r: 10 },
+  { a: 'shoulderN', b: 'shoulderF', r: 6 },
+  { a: 'hipN', b: 'hipF', r: 7.5 },
+  { a: 'neck', b: 'head', r: 3.6 },
+  { a: 'shoulderN', b: 'elbowN', r: 4.4 }, { a: 'elbowN', b: 'handN', r: 3.7 },
+  { a: 'shoulderF', b: 'elbowF', r: 4.4, far: true }, { a: 'elbowF', b: 'handF', r: 3.7, far: true },
+  { a: 'hipN', b: 'kneeN', r: 6.2 }, { a: 'kneeN', b: 'ankleN', r: 4.9 }, { a: 'ankleN', b: 'toeN', r: 3.1 },
+  { a: 'hipF', b: 'kneeF', r: 6.2, far: true }, { a: 'kneeF', b: 'ankleF', r: 4.9, far: true }, { a: 'ankleF', b: 'toeF', r: 3.1, far: true },
 ]
 const BALLS: { j: keyof Joints3; r: number; far?: boolean }[] = [
-  { j: 'elbowN', r: 3 }, { j: 'handN', r: 3.4 }, { j: 'kneeN', r: 4.4 }, { j: 'ankleN', r: 3.2 },
-  { j: 'elbowF', r: 3, far: true }, { j: 'handF', r: 3.4, far: true }, { j: 'kneeF', r: 4.4, far: true }, { j: 'ankleF', r: 3.2, far: true },
-  { j: 'shoulderN', r: 4.5 }, { j: 'shoulderF', r: 4.5 }, { j: 'hipN', r: 6 }, { j: 'hipF', r: 6 }, { j: 'spineMid', r: 7.6 },
+  { j: 'elbowN', r: 3.9 }, { j: 'handN', r: 4 }, { j: 'kneeN', r: 5.2 }, { j: 'ankleN', r: 3.6 },
+  { j: 'elbowF', r: 3.9, far: true }, { j: 'handF', r: 4, far: true }, { j: 'kneeF', r: 5.2, far: true }, { j: 'ankleF', r: 3.6, far: true },
+  { j: 'shoulderN', r: 6 }, { j: 'shoulderF', r: 6 }, { j: 'hipN', r: 7.5 }, { j: 'hipF', r: 7.5 }, { j: 'spineMid', r: 9.8 },
 ]
 
 const UP = new THREE.Vector3(0, 1, 0)
@@ -84,9 +80,9 @@ function buildScene(anim: AnimDef, cx: number, scene: THREE.Scene) {
 
 export type CamPreset = 'profil' | '3/4' | 'face' | 'dessus'
 
-interface Props { anim: string; band?: Band; className?: string; work?: Work }
+interface Props { anim: string; band?: Band; className?: string }
 
-export default function Figure3D({ anim: id, band, className, work }: Props) {
+export default function Figure3D({ anim: id, band, className }: Props) {
   const ref = useRef<HTMLDivElement>(null)
   const api = useRef<{ setView: (p: CamPreset) => void }>(undefined)
   const [failed, setFailed] = useState(false)
@@ -147,8 +143,7 @@ export default function Figure3D({ anim: id, band, className, work }: Props) {
       m.scale.setScalar(b.r)
       return m
     })
-    const muscles = buildMuscles(work, shadowed)
-    const head = shadowed(new THREE.Mesh(ball, new THREE.MeshStandardMaterial({ color: HEAD, roughness: 0.55 })))
+    const head = shadowed(new THREE.Mesh(ball, near))
     head.scale.setScalar(9.2)
     const nose = shadowed(new THREE.Mesh(ball, new THREE.MeshStandardMaterial({ color: '#60a5fa', roughness: 0.4 })))
     nose.scale.setScalar(2.6)
@@ -217,7 +212,6 @@ export default function Figure3D({ anim: id, band, className, work }: Props) {
         segs[i].scale.x = segs[i].scale.z = s.r
       })
       BALLS.forEach((b, i) => balls[i].position.set(...(j[b.j] as V3)))
-      muscles(j)
       head.position.set(...j.head)
       nose.position.set(j.head[0] + j.face[0] * 8.3, j.head[1] + j.face[1] * 8.3, j.head[2] + j.face[2] * 8.3)
       if (sac && anim.sac) {
@@ -250,7 +244,7 @@ export default function Figure3D({ anim: id, band, className, work }: Props) {
       renderer.dispose()
       renderer.domElement.remove()
     }
-  }, [id, band, work])
+  }, [id, band])
 
   if (failed) return null
   return (

@@ -50,7 +50,7 @@ export function ExerciseBlock({ exId, level, children }: { exId: string; level: 
 
   return (
     <div className="stack">
-      <Demo anim={animOf(exId, level)} band={lvl?.band} work={workOf(exId)} />
+      <Demo anim={animOf(exId, level)} band={lvl?.band} />
       <div className="stack" style={{ gap: 4 }}>
         <div className="ex-name">{ex.name}</div>
         <div className="small muted">{ex.muscles}{lvl && ex.levels!.length > 1 ? ` · ${lvl.label}` : ''}</div>

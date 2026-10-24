@@ -3,7 +3,10 @@
 // - heat : séries de la semaine par muscle (échelle d'une seule teinte).
 import { useId, useState } from 'react'
 import { MUSCLE_LABEL, type Muscle, type Work } from '../data/muscles'
-import { MUSCLE_PRIMARY, MUSCLE_SECONDARY, MUSCLE_STAB } from '../anim/muscles3d'
+
+export const MUSCLE_PRIMARY = '#ef4444'
+export const MUSCLE_SECONDARY = '#fb923c'
+export const MUSCLE_STAB = '#fde047'
 
 const BASE = '#28324a'
 const IDLE = '#4d5972'

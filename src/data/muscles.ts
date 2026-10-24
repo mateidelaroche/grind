@@ -1,5 +1,5 @@
 // Muscles travaillés par exercice : principaux (rouge), secondaires (orange) et stabilisateurs (jaune).
-// Sert au mannequin 3D écorché, à la carte des muscles 2D et au bilan de la semaine.
+// Sert à la carte des muscles 2D et au bilan de la semaine.
 import { SESSIONS } from './sessions'
 import type { SessionId } from '../types'
 
@@ -83,7 +83,6 @@ export const EX_MUSCLES: Record<string, Work> = {
 }
 
 const NONE: Work = { p: [], s: [], st: [] }
-// Référence stable : le rendu 3D se reconstruit quand elle change.
 export const workOf = (ex: string): Work => EX_MUSCLES[ex] ?? NONE
 
 /** Muscles d'une liste d'exercices : on garde le rôle le plus fort trouvé pour chaque muscle. */
