@@ -8,6 +8,8 @@ import { animOf, gearForExercise, levelOf, programLevel } from '../lib/program'
 import { useStore } from '../store'
 import { BAND_COLORS } from '../anim/Figure'
 import { SESSIONS } from '../data/sessions'
+import { workOf } from '../data/muscles'
+import MuscleMap from '../components/MuscleMap'
 
 const CATS: [string, string[]][] = [
   ['Poussée', ['pushup', 'pushup-decline', 'pushup-diamond', 'pike', 'dips-bed', 'fly-band', 'lat-raise', 'triceps-oh']],
@@ -66,8 +68,9 @@ export function ExerciseDetail({ id, onBack }: { id: string; onBack: () => void 
         <button className="icon-btn" onClick={onBack} aria-label="Retour"><IconBack /></button>
         <div className="grow ex-name">{ex.name}</div>
       </div>
-      <Demo anim={animOf(id, lvl)} band={level?.band} />
+      <Demo anim={animOf(id, lvl)} band={level?.band} work={workOf(id)} />
       <div className="small muted">{ex.muscles}</div>
+      <MuscleMap work={workOf(id)} />
       <GearChips gear={gearForExercise(id, lvl)} />
       <HowTo exId={id} />
 

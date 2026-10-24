@@ -12,6 +12,8 @@ import { toast } from '../components/ui'
 import { addDays, formatDate, fromISO, levelOf, mondayOf, suggestions, today } from '../lib/program'
 import { useStore } from '../store'
 import type { Workout } from '../types'
+import { workOfMany } from '../data/muscles'
+import MuscleMap from '../components/MuscleMap'
 
 const minutes = (w: Workout) => (w.endedAt ? Math.max(1, Math.round((w.endedAt - w.startedAt) / 60000)) : undefined)
 const setsDone = (w: Workout) => Object.values(w.sets).reduce((a, r) => a + r.done, 0)
@@ -181,6 +183,12 @@ export function Recap({ id, onBack, fresh }: { id: string; onBack: () => void; f
               </div>
             )
           })}
+        </>
+      )}
+      {Object.values(w.sets).some((r) => r.done > 0) && (
+        <>
+          <div className="section-title">Muscles travaillés</div>
+          <div className="card"><MuscleMap work={workOfMany(Object.values(w.sets).filter((r) => r.done > 0).map((r) => r.ex))} /></div>
         </>
       )}
       <div className="section-title">Détail</div>

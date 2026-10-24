@@ -7,6 +7,8 @@ import { Sheet, Stepper, toast } from '../components/ui'
 import { animOf, editKey, effectiveItem, effectiveLevel, effectiveRest, effectiveSets, levelOf, today, weekNumber } from '../lib/program'
 import { useStore } from '../store'
 import type { SessionId } from '../types'
+import { workOfSession } from '../data/muscles'
+import MuscleMap from '../components/MuscleMap'
 
 const MAIN: SessionId[] = ['A', 'B', 'C']
 const ROUTINES: SessionId[] = ['GENOUX', 'BONUS', 'WARMUP', 'COOLDOWN']
@@ -63,6 +65,7 @@ export function SessionDetail({ id, onBack, onStart, onExercise }: {
           <div className="small muted">{ses.subtitle}</div>
         </div>
       </div>
+      <MuscleMap work={workOfSession(id)} compact />
       {!routine && week >= 1 && (week <= 2 || week === 9) && (
         <div className="small muted">📉 Semaine {week} : séries réduites automatiquement ({week <= 2 ? '1 série en moins' : 'moitié des séries'}).</div>
       )}

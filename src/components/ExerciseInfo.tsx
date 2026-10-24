@@ -5,6 +5,8 @@ import { EXERCISES } from '../data/exercises'
 import { animOf, gearForExercise, levelOf } from '../lib/program'
 import { useStore } from '../store'
 import { GearChips } from './ui'
+import { workOf } from '../data/muscles'
+import MuscleMap from './MuscleMap'
 
 export function HowTo({ exId }: { exId: string }) {
   const ex = EXERCISES[exId]
@@ -48,7 +50,7 @@ export function ExerciseBlock({ exId, level, children }: { exId: string; level: 
 
   return (
     <div className="stack">
-      <Demo anim={animOf(exId, level)} band={lvl?.band} />
+      <Demo anim={animOf(exId, level)} band={lvl?.band} work={workOf(exId)} />
       <div className="stack" style={{ gap: 4 }}>
         <div className="ex-name">{ex.name}</div>
         <div className="small muted">{ex.muscles}{lvl && ex.levels!.length > 1 ? ` · ${lvl.label}` : ''}</div>
@@ -56,6 +58,7 @@ export function ExerciseBlock({ exId, level, children }: { exId: string; level: 
       {children}
       <GearChips gear={gear} />
       <HowTo exId={exId} />
+      <MuscleMap work={workOf(exId)} compact />
       {mastered ? (
         <button className="btn sm ghost" style={{ alignSelf: 'flex-start' }} onClick={() => setShow(false)}>Masquer les consignes</button>
       ) : (
