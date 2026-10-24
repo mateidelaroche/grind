@@ -1,4 +1,5 @@
 import { EXERCISES } from '../data/exercises'
+import { gearAnim } from '../anim/anims'
 import { RUN_DAYS } from '../data/running'
 import { SESSIONS } from '../data/sessions'
 import type { Band, Block, DayPlan, Equip, Item, ItemEdit, Level, Sac, SessionId, Workout } from '../types'
@@ -91,7 +92,10 @@ export function programLevel(exId: string) {
 }
 
 export const levelOf = (exId: string, lvl: number): Level | undefined => EXERCISES[exId].levels?.[lvl]
-export const animOf = (exId: string, lvl: number) => levelOf(exId, lvl)?.anim ?? EXERCISES[exId].anim
+export const animOf = (exId: string, lvl: number) => {
+  const level = levelOf(exId, lvl)
+  return gearAnim(level?.anim ?? EXERCISES[exId].anim, exId, level)
+}
 
 export function effectiveSets(sets: number, week: number, routine: boolean) {
   if (routine) return sets

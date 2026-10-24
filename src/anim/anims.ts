@@ -1,4 +1,4 @@
-import { along, FLOOR, L, solve2, type AnimDef, type Limb, type Pose, type V } from './rig'
+import { along, FLOOR, L, solve2, type AnimDef, type BandDef, type Limb, type Pose, type Target, type V } from './rig'
 
 // Repères : sol y=150, cheville au sol y≈148, debout bassin y=74.
 const FL = FLOOR - 2
@@ -453,4 +453,34 @@ export const ANIMS: Record<string, AnimDef> = {
   'glute-bridge': gluteBridge, clamshell, tke, 'tib-raise': tibRaise, 'wall-sit': wallSit, 'bw-squat': bwSquat,
   'shadow-box': shadowBox, 'step-jack': stepJack, climber,
   'st-pecs': stPecs, 'st-child': stChild, 'st-quad': stQuad, 'st-hams': stHams, 'st-hip': stHip,
+}
+
+// ───────────── Matériel selon le niveau ─────────────
+/** Élastique ou sac ajouté par un niveau quand l'animation de base ne le montre pas (repères : personnage tourné vers la droite). */
+const LEVEL_GEAR: Record<string, { sac?: Target; bands?: BandDef[] }> = {
+  // Élastique en travers du haut du dos, tenu sous chaque main ; sac porté sur le dos
+  pushup: {
+    sac: { j: 'chest', o: [-4, -10] },
+    bands: [{ from: { j: 'handN' }, to: { j: 'chest', o: [-5, -12] } }, { from: { j: 'handF' }, to: { j: 'chest', o: [-5, -12] } }],
+  },
+  'pushup-decline': { sac: { j: 'chest', o: [-4, -10] } },
+  'dips-bed': { sac: { j: 'kneeN', o: [-12, -6] } },
+  hammer: { sac: { j: 'handN', o: [0, 9] } },
+  rdl: { sac: { j: 'handN', o: [0, 9] } },
+  lunge: { sac: { j: 'chest', o: [-9, 0] } },
+  calf: { sac: { j: 'chest', o: [-9, 0] } },
+  plank: { sac: { j: 'pelvis', o: [6, -9] } },
+}
+
+/** Animation qui montre exactement le matériel du niveau choisi (élastique, sac… ou rien). */
+export function gearAnim(base: string, ex: string, level?: { band?: string; sac?: string }): string {
+  const d = ANIMS[base]
+  if (!level || !d) return base
+  const g = LEVEL_GEAR[ex]
+  const bands = level.band ? (d.bands?.length ? d.bands : g?.bands) : undefined
+  const sac = level.sac ? d.sac ?? g?.sac : undefined
+  if (bands === d.bands && sac === d.sac) return base
+  const id = `${base}@${ex}:${bands ? 'b' : ''}${sac ? 's' : ''}`
+  ANIMS[id] ??= { ...d, bands, sac }
+  return id
 }

@@ -23,7 +23,7 @@ const list: Exercise[] = [
       { label: 'Élastique L en travers du dos', band: 'L' },
       { label: 'Élastique M en travers du dos', band: 'M' },
       { label: 'Élastique F en travers du dos', band: 'F' },
-      { label: 'Sac à dos lourd', sac: 'lourd' },
+      { label: 'Sac à dos lourd, porté sur le dos', sac: 'lourd' },
     ],
   },
   {
@@ -239,9 +239,9 @@ const list: Exercise[] = [
     levels: [
       { label: 'Fente arrière' },
       { label: 'Fente bulgare', anim: 'lunge-bulgare' },
-      { label: 'Fente bulgare + sac léger', sac: 'léger', anim: 'lunge-bulgare' },
-      { label: 'Fente bulgare + sac moyen', sac: 'moyen', anim: 'lunge-bulgare' },
-      { label: 'Fente bulgare + sac lourd', sac: 'lourd', anim: 'lunge-bulgare' },
+      { label: 'Fente bulgare + sac léger sur le dos', sac: 'léger', anim: 'lunge-bulgare' },
+      { label: 'Fente bulgare + sac moyen sur le dos', sac: 'moyen', anim: 'lunge-bulgare' },
+      { label: 'Fente bulgare + sac lourd sur le dos', sac: 'lourd', anim: 'lunge-bulgare' },
     ],
   },
   {
@@ -272,8 +272,8 @@ const list: Exercise[] = [
     execution: 'Monte le plus haut possible, tiens 1 s, descends sous le niveau des livres.',
     levels: [
       { label: 'Poids du corps' },
-      { label: 'Sac léger', sac: 'léger' },
-      { label: 'Sac moyen', sac: 'moyen' },
+      { label: 'Sac léger sur le dos', sac: 'léger' },
+      { label: 'Sac moyen sur le dos', sac: 'moyen' },
     ],
   },
   {
@@ -314,7 +314,7 @@ const list: Exercise[] = [
     setup: 'Debout sur l’élastique, pieds largeur de hanches, haut de la boucle dans les mains.',
     execution: 'Genoux légèrement fléchis et fixes, pousse les fesses vers l’arrière dos plat jusqu’à mi-tibias. Remonte en serrant les fesses.',
     errors: 'Dos rond, plier les genoux comme un squat.',
-    levels: bands({ label: 'Unilatéral, sac moyen', sac: 'moyen' }, { label: 'Unilatéral, sac lourd', sac: 'lourd' }),
+    levels: bands({ label: 'Unilatéral, sac moyen en main', sac: 'moyen' }, { label: 'Unilatéral, sac lourd en main', sac: 'lourd' }),
   },
 
   // ───────────── ABDOS ─────────────
@@ -339,7 +339,7 @@ const list: Exercise[] = [
     execution: 'Sur les avant-bras, corps aligné, fesses et abdos serrés au maximum, pousse le sol loin de toi.',
     levels: [
       { label: 'Planche avant-bras' },
-      { label: 'Planche + sac léger', sac: 'léger' },
+      { label: 'Planche + sac léger sur le bas du dos', sac: 'léger' },
       { label: 'Bras tendus, tap d’épaules' },
     ],
   },
