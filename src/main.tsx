@@ -10,7 +10,10 @@ import './styles.css'
 registerSW({ immediate: true })
 
 // Dev uniquement : accès au store depuis la console / les tests.
-if (import.meta.env.DEV) (window as unknown as { __store: typeof useStore }).__store = useStore
+if (import.meta.env.DEV) {
+  (window as unknown as { __store: typeof useStore }).__store = useStore
+  void import('./lib/gps').then((m) => { (window as unknown as { __tracker: unknown }).__tracker = m.tracker })
+}
 
 // iOS n'autorise le son qu'après un premier geste : on l'active au premier tap.
 window.addEventListener('pointerdown', unlockAudio, { once: true })

@@ -15,6 +15,7 @@ const CATS: [string, string[]][] = [
   ['Jambes', ['lunge', 'box-squat', 'calf', 'hip-thrust', 'leg-curl', 'rdl']],
   ['Abdos', ['crunch-band', 'plank', 'leg-raise', 'side-plank', 'dead-bug', 'hollow']],
   ['Échauffement & genoux', ['march', 'arm-circles', 'cat-cow', 'scap-pushup', 'inchworm', 'glute-bridge', 'clamshell', 'tke', 'tib-raise', 'wall-sit', 'bw-squat']],
+  ['Cardio en chambre', ['shadow-box', 'step-jack', 'climber']],
   ['Étirements', ['st-pecs', 'st-child', 'st-quad', 'st-hams', 'st-hip']],
 ]
 

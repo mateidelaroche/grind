@@ -1,7 +1,9 @@
 // Rappels : l'appli publie dans le Gist le planning des 14 prochains jours ;
 // une GitHub Action lit ce planning chaque jour et envoie la notification push.
 import { SESSIONS } from '../data/sessions'
-import { addDays, dayPlan, diffDays, today, weekday } from './program'
+import { runProgress, RUN_PLAN } from '../data/running'
+import { addDays, dayPlan, diffDays, isRunDay, runStartOf, today, weekday } from './program'
+import type { RunLog } from '../types'
 import { useStore } from '../store'
 
 export const VAPID_PUBLIC = 'BPE_idk0pbeaic5AyJKqU7q_GCI1ivJJSyWO0Q-pBvfTvpZwftqDMI7LgUbua84sX8u02MmOF8DoMq2GQcEDGlY'
@@ -10,11 +12,14 @@ export interface NotifyEntry { slot: 'matin' | 'soir' | 'aprem'; title: string; 
 
 export function notifyPlan(s: {
   overrides: Record<string, string>; settings: { reminders: boolean }; measures: Record<string, unknown>
+  startDate: string; runStart?: string; runs: RunLog[]
 }): Record<string, NotifyEntry[]> {
   if (!s.settings.reminders) return {}
   const out: Record<string, NotifyEntry[]> = {}
   const d0 = today()
   const lastMeasure = Object.keys(s.measures ?? {}).sort().at(-1)
+  const runStart = runStartOf(s)
+  const next = RUN_PLAN[runProgress(s.runs ?? []).index]
   for (let i = 0; i < 14; i++) {
     const date = addDays(d0, i)
     const plan = dayPlan(date, s.overrides)
@@ -28,7 +33,17 @@ export function notifyPlan(s: {
         body: monthly ? 'Au réveil, avant de manger. Et c’est le moment des mensurations + photos du mois 📏' : 'Au réveil, après les toilettes, avant de manger.',
       })
     }
-    if (plan.type === 'session') {
+    const run = next && isRunDay(date, runStart) && !(s.runs ?? []).some((r) => r.date === date)
+    if (run && plan.type === 'session') {
+      const ses = SESSIONS[plan.session]
+      list.push({
+        slot: weekend ? 'aprem' : 'soir',
+        title: `🏃 Course + ${ses.name} ${weekend ? 'aujourd’hui' : 'ce soir'}`,
+        body: `${next.title}, puis ${ses.subtitle.toLowerCase()}. Il pleut ? Cardio en chambre 25 min.`,
+      })
+    } else if (run) {
+      list.push({ slot: weekend ? 'aprem' : 'soir', title: '🏃 Course aujourd’hui', body: `${next.title}. Il pleut ? Cardio en chambre 25 min.` })
+    } else if (plan.type === 'session') {
       const ses = SESSIONS[plan.session]
       list.push({
         slot: weekend ? 'aprem' : 'soir',

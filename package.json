@@ -1,7 +1,7 @@
 {
   "name": "grind",
   "private": true,
-  "version": "1.0.0",
+  "version": "3.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host",
@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "idb-keyval": "^6.3.0",
+    "leaflet": "^1.9.4",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "three": "^0.186.1",
@@ -20,6 +21,7 @@
     "zustand": "^5.0.16"
   },
   "devDependencies": {
+    "@types/leaflet": "1.9",
     "@types/node": "^26.6.5",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",

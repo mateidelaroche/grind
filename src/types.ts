@@ -147,3 +147,49 @@ export interface ItemEdit {
   reps?: string
   rest?: number
 }
+
+// ───────────── Course ─────────────
+/** warm/cool : marche d'échauffement / retour au calme ; work/rest : cardio en chambre ; free : sortie libre. */
+export type RunStepKind = 'warm' | 'run' | 'walk' | 'cool' | 'work' | 'rest' | 'free'
+
+export interface RunStep {
+  kind: RunStepKind
+  /** Durée (s) — ou distance (m) pour une étape « jusqu'à 5 km ». Aucune des deux : étape libre. */
+  dur?: number
+  dist?: number
+  /** Exercice affiché (cardio en chambre). */
+  ex?: string
+}
+
+export interface RunSplit {
+  kind: RunStepKind
+  /** Début de l'étape (s de temps actif depuis le départ). */
+  t0: number
+  dur: number
+  dist: number
+  /** Étape menée jusqu'au bout (pas écourtée). */
+  full: boolean
+}
+
+export interface RunLog {
+  id: string
+  date: string
+  /** Index de la sortie dans le programme (0-19), -1 pour une sortie libre. */
+  plan: number
+  indoor?: boolean
+  startedAt: number
+  endedAt: number
+  /** Temps actif (s), pauses exclues. */
+  dur: number
+  /** Distance (m). */
+  dist: number
+  /** Toutes les fractions de course menées au bout. */
+  completed: boolean
+  splits: RunSplit[]
+  /** Tracé simplifié : [lat × 1e5, lon × 1e5, t (s)]. */
+  track?: [number, number, number][]
+  knee?: number
+  /** Genou le lendemain matin. */
+  kneeNext?: number
+  edited?: number
+}

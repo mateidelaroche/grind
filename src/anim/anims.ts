@@ -410,6 +410,36 @@ const guideFace: AnimDef = {
 }
 const guideProfil: AnimDef = { noFloor: true, dur: [1], keys: [stand(100)] }
 
+
+// ───────────── CARDIO EN CHAMBRE (sans sauts) ─────────────
+const guard = (o: Partial<Pose> = {}): Pose =>
+  stand(100, { t: -86, lN: { ik: [114, FL] }, lF: { ik: [86, FL] }, aN: { a: [62, -72] }, aF: { a: [58, -76] }, fN: 0, fF: 0, ...o })
+const shadowBox: AnimDef = {
+  cam: { az: 35, el: 12 },
+  keys: [guard(), guard({ t: -84, aN: { a: [-4, -4] } }), guard(), guard({ t: -88, aF: { a: [-6, -6] } })],
+  dur: [0.22, 0.28, 0.22, 0.28], hold: [0.08, 0, 0.08, 0],
+}
+
+const jack = (side: 0 | 1 | -1): Pose =>
+  stand(100, {
+    aN: side ? { a: [-62, -78] } : { a: [84, 88] },
+    aF: side ? { a: [-118, -102] } : { a: [96, 92] },
+    lN: { ik: [side === 1 ? 126 : 104, FL] },
+    lF: { ik: [side === -1 ? 74 : 96, FL] },
+  })
+const stepJack: AnimDef = {
+  view: 'front',
+  keys: [jack(0), jack(1), jack(0), jack(-1)],
+  dur: [0.4, 0.4, 0.4, 0.4], hold: [0.05, 0.1, 0.05, 0.1],
+}
+
+const climberPose = (near: boolean): Pose => {
+  const base = pushupPose([40, 145], 97, 152)
+  const knee: Limb = { a: [15, 150] }
+  return near ? { ...base, lN: knee, fN: 120 } : { ...base, lF: knee, fF: 120 }
+}
+const climber: AnimDef = { keys: [climberPose(true), climberPose(false)], dur: [0.6, 0.6], hold: [0.15, 0.15] }
+
 export const ANIMS: Record<string, AnimDef> = {
   'guide-face': guideFace, 'guide-profil': guideProfil,
   pushup, 'pushup-decline': pushupDecline, 'pushup-diamond': pushupDiamond, pike, 'dips-bed': dipsBed,
@@ -421,5 +451,6 @@ export const ANIMS: Record<string, AnimDef> = {
   'crunch-band': crunchBand, plank, 'leg-raise': legRaise, 'side-plank': sidePlank, 'dead-bug': deadBug, hollow,
   march, 'arm-circles': armCircles, 'cat-cow': catCow, 'scap-pushup': scapPushup, inchworm,
   'glute-bridge': gluteBridge, clamshell, tke, 'tib-raise': tibRaise, 'wall-sit': wallSit, 'bw-squat': bwSquat,
+  'shadow-box': shadowBox, 'step-jack': stepJack, climber,
   'st-pecs': stPecs, 'st-child': stChild, 'st-quad': stQuad, 'st-hams': stHams, 'st-hip': stHip,
 }

@@ -44,6 +44,9 @@ export const beep = {
   half: () => { tone(990, 0.1); tone(990, 0.1, 0.15) },
   end: () => { tone(1320, 0.18, 0, 0.6); tone(1760, 0.5, 0.2, 0.6) },
   done: () => { tone(660, 0.12); tone(880, 0.12, 0.12); tone(1320, 0.3, 0.24) },
+  // Course : « cours » = montée aiguë, « marche » = descente grave (reconnaissables sans regarder l'écran)
+  run: () => { tone(880, 0.14, 0, 0.7); tone(1175, 0.14, 0.16, 0.7); tone(1568, 0.45, 0.32, 0.7) },
+  walk: () => { tone(784, 0.3, 0, 0.7); tone(523, 0.6, 0.32, 0.7) },
   // Métronome : descente (grave), pause (médium), montée (aigu)
   down: () => tone(440, 0.08, 0, 0.35),
   hold: () => tone(660, 0.08, 0, 0.35),

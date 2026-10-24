@@ -10,6 +10,7 @@ import { SESSIONS } from '../data/sessions'
 import { useStore } from '../store'
 import Camera from './Camera'
 import type { MeasureKey, Measures, PhotoMeta, PhotoPose, TestId, TestKey } from '../types'
+import { RunRecords } from './RunViews'
 
 export const MEASURES: { key: MeasureKey; label: string }[] = [
   { key: 'brasD', label: 'Bras droit contracté' },
@@ -299,6 +300,8 @@ export function RecordsTab() {
         <div className="stat"><span className="big-num">🔥 {streak}</span><span className="tiny muted">record de semaines d’affilée</span></div>
         <div className="stat"><span className="big-num">{maxW ? fmt(maxW[1]) : '–'}</span><span className="tiny muted">poids max (kg)</span></div>
       </div>
+
+      <RunRecords />
 
       <div className="section-title">Temps tenus</div>
       <div className="card" style={{ padding: '4px 16px', gap: 0 }}>

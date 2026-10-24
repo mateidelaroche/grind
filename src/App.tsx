@@ -3,6 +3,8 @@ import { IconBook, IconChart, IconGear, IconList, IconToday } from './components
 import { ConfettiHost } from './components/Confetti'
 import { ToastHost } from './components/ui'
 import Food from './screens/Food'
+import { RunPrep, RunScreen, type RunKind } from './screens/Run'
+import { RunProgram, RunRecap } from './screens/RunViews'
 import { today } from './lib/program'
 import { ExerciseDetail, ExercisesList } from './screens/Exercises'
 import { HistoryScreen, Recap } from './screens/History'
@@ -19,6 +21,9 @@ type Page =
   | { p: 'exercise'; id: string }
   | { p: 'recap'; id: string; fresh?: boolean }
   | { p: 'food' }
+  | { p: 'runprep'; kind: RunKind }
+  | { p: 'runrecap'; id: string; fresh?: boolean }
+  | { p: 'runprogram' }
 
 const TABS: { id: Tab; label: string; icon: () => React.JSX.Element }[] = [
   { id: 'today', label: 'Aujourd’hui', icon: IconToday },
@@ -31,6 +36,7 @@ const TABS: { id: Tab; label: string; icon: () => React.JSX.Element }[] = [
 export default function App() {
   const hydrated = useStore((s) => s.hydrated)
   const active = useStore((s) => s.active)
+  const activeRun = useStore((s) => s.activeRun)
   const startWorkout = useStore((s) => s.startWorkout)
   const [tab, setTab] = useState<Tab>('today')
   const [stack, setStack] = useState<Page[]>([])
@@ -47,6 +53,15 @@ export default function App() {
     setStack([])
   }
 
+  if (activeRun) {
+    return (
+      <>
+        <RunScreen onFinished={(id) => { setTab('today'); setStack(id ? [{ p: 'runrecap', id, fresh: true }] : []) }} />
+        <ToastHost />
+      </>
+    )
+  }
+
   if (active) {
     return (
       <>
@@ -61,19 +76,25 @@ export default function App() {
   else if (page?.p === 'exercise') content = <ExerciseDetail id={page.id} onBack={pop} />
   else if (page?.p === 'recap') content = <Recap id={page.id} fresh={page.fresh} onBack={pop} />
   else if (page?.p === 'food') content = <Food onBack={pop} />
+  else if (page?.p === 'runprep') content = <RunPrep kind={page.kind} onBack={pop} />
+  else if (page?.p === 'runrecap') content = <RunRecap id={page.id} fresh={page.fresh} onBack={pop} onStartSession={(sid) => start(sid, false)} />
+  else if (page?.p === 'runprogram') content = <RunProgram onBack={pop} onRun={(kind) => push({ p: 'runprep', kind })} />
   else if (tab === 'today') {
     content = (
       <Today
         onStart={start}
         onOpenSession={(id) => push({ p: 'session', id })}
         onFood={() => push({ p: 'food' })}
+        onRun={(kind) => push({ p: 'runprep', kind })}
+        onRunOpen={(id) => push({ p: 'runrecap', id })}
+        onRunProgram={() => push({ p: 'runprogram' })}
         onPhotos={() => { try { sessionStorage.setItem('hist', 'corps') } catch { /* ignore */ } setTab('history') }}
       />
     )
   }
-  else if (tab === 'sessions') content = <SessionsList onOpen={(id) => push({ p: 'session', id })} />
+  else if (tab === 'sessions') content = <SessionsList onOpen={(id) => push({ p: 'session', id })} onRunProgram={() => push({ p: 'runprogram' })} />
   else if (tab === 'exercises') content = <ExercisesList onOpen={(id) => push({ p: 'exercise', id })} />
-  else if (tab === 'history') content = <HistoryScreen onOpen={(id) => push({ p: 'recap', id })} />
+  else if (tab === 'history') content = <HistoryScreen onOpen={(id) => push({ p: 'recap', id })} onRunOpen={(id) => push({ p: 'runrecap', id })} onRunProgram={() => push({ p: 'runprogram' })} />
   else content = <Settings />
 
   return (

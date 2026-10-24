@@ -11,10 +11,14 @@ import type { SessionId } from '../types'
 const MAIN: SessionId[] = ['A', 'B', 'C']
 const ROUTINES: SessionId[] = ['GENOUX', 'BONUS', 'WARMUP', 'COOLDOWN']
 
-export function SessionsList({ onOpen }: { onOpen: (s: SessionId) => void }) {
+export function SessionsList({ onOpen, onRunProgram }: { onOpen: (s: SessionId) => void; onRunProgram: () => void }) {
   return (
     <div className="page">
       <div className="page-title">Séances</div>
+      <button className="card tap" onClick={onRunProgram}>
+        <div className="row between"><div className="ex-name">🏃 Course</div><span className="small muted">30-40 min</span></div>
+        <div className="muted small">10 semaines, mercredi + dimanche : du fractionné course/marche jusqu’aux 5 km sans t’arrêter.</div>
+      </button>
       {MAIN.map((id) => {
         const s = SESSIONS[id]
         return (

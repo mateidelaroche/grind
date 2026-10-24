@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { SettingRow, toast, Toggle } from '../components/ui'
 import { exportCSV, exportJSON, importJSON } from '../lib/export'
 import { disableReminders, enableReminders, isStandalone, testNotification } from '../lib/notify'
-import { formatDate } from '../lib/program'
+import { formatDate, runStartOf } from '../lib/program'
 import { connect, disconnect, pullNow, pushNow, TOKEN_URL } from '../lib/sync'
 import { useStore } from '../store'
 import type { Settings as S } from '../types'
@@ -60,7 +60,7 @@ export default function Settings() {
 
       <div className="section-title">Rappels</div>
       <div className="card" style={{ padding: '4px 16px', gap: 0 }}>
-        <SettingRow title="Notifications" desc="18h30 séance ou basket · 14h le week-end · lundi 7h30 pesée">
+        <SettingRow title="Notifications" desc="18h30 séance, course ou basket · 14h le week-end · lundi 7h30 pesée">
           <Toggle on={s.settings.reminders} onChange={async (v) => {
             if (v) { const err = await enableReminders(); if (err) toast(err); else toast('Rappels activés 🔔') }
             else void disableReminders()
@@ -104,6 +104,9 @@ export default function Settings() {
       <div className="card" style={{ padding: '4px 16px', gap: 0 }}>
         <SettingRow title="Début du programme" desc={formatDate(s.startDate)}>
           <input type="date" className="input" style={{ width: 150 }} value={s.startDate} onChange={(e) => e.target.value && s.setStartDate(e.target.value)} />
+        </SettingRow>
+        <SettingRow title="Début de la course" desc={formatDate(runStartOf(s))}>
+          <input type="date" className="input" style={{ width: 150 }} value={runStartOf(s)} onChange={(e) => e.target.value && s.setRunStart(e.target.value)} />
         </SettingRow>
         <SettingRow title="Réafficher toutes les consignes" desc="Repasse tous les exercices en mode coaché">
           <button className="btn sm" onClick={() => { Object.keys(s.mastered).forEach((k) => s.setMastered(k, false)); toast('Mode coaché réactivé partout') }}>Réinitialiser</button>

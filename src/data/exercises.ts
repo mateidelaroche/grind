@@ -413,6 +413,9 @@ const list: Exercise[] = [
     knee: 'L’isométrie fait baisser la douleur des tendons du genou.',
   },
   { id: 'bw-squat', name: 'Squats lents', muscles: 'Jambes', equipment: [], anim: 'bw-squat', execution: 'Squats lents au poids du corps, amplitude progressive.' },
+  { id: 'shadow-box', name: 'Shadow boxing', muscles: 'Cardio, épaules, gainage', equipment: [], anim: 'shadow-box', execution: 'Garde haute, pieds décalés. Enchaîne les coups droits gauche-droite en tournant légèrement le buste, et sautille sur place sans décoller (juste les talons).', errors: 'Ne verrouille pas le coude à fond : tends à 90 %.' },
+  { id: 'step-jack', name: 'Jumping jack sans saut', muscles: 'Cardio, épaules', equipment: [], anim: 'step-jack', execution: 'Écarte une jambe sur le côté en montant les bras au-dessus de la tête, reviens, puis l’autre jambe. Rythme rapide, zéro impact.' },
+  { id: 'climber', name: 'Mountain climbers lents', muscles: 'Cardio, abdos, épaules', equipment: [], anim: 'climber', execution: 'En planche bras tendus, ramène un genou vers la poitrine puis l’autre, en posant le pied à chaque fois (pas de petits sauts).', errors: 'Les fesses restent à la hauteur des épaules.', knee: 'Pose le pied doucement : pas d’impact.' },
 
   // ───────────── RETOUR AU CALME ─────────────
   { id: 'st-pecs', name: 'Étirement pecs', muscles: 'Pectoraux', equipment: ['porte'], anim: 'st-pecs', perSide: 'côté', execution: 'Avant-bras contre l’encadrement de porte, avance doucement le buste.' },

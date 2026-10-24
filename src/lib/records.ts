@@ -1,7 +1,9 @@
 import { EXERCISES } from '../data/exercises'
 import { SESSIONS } from '../data/sessions'
 import { addDays, mondayOf } from './program'
-import type { LevelEvent, TestId, TestKey, TestResult, Workout } from '../types'
+import { RUN_PLAN } from '../data/running'
+import { fmtDur, fmtKm, fmtPace } from './gps'
+import type { LevelEvent, RunLog, TestId, TestKey, TestResult, Workout } from '../types'
 
 export const TESTS: { key: TestKey; label: string; unit: 'reps' | 's' }[] = [
   { key: 'pompes', label: 'Pompes max (strictes)', unit: 'reps' },
@@ -93,3 +95,59 @@ export function recordsOfTest(id: TestId, r: TestResult, tests: Partial<Record<T
 }
 
 export const levelLabel = (e: LevelEvent) => `${EXERCISES[e.ex]?.name ?? e.ex} → niveau ${e.level + 1}`
+
+// ───────────── Course ─────────────
+export const RUN_KM_MILESTONES = [10, 25, 50, 100, 150, 200]
+const outdoor = (r: RunLog) => !r.indoor && r.dist > 0
+
+export interface RunBests {
+  /** Plus longue course sans marcher (s). */
+  longest?: { v: number; date: string }
+  farthest?: { v: number; date: string }
+  /** Meilleure allure sur une fraction de course d'au moins 3 min (s/km). */
+  pace?: { v: number; date: string }
+  /** Meilleur temps sur l'étape 5 km (s). */
+  fiveK?: { v: number; date: string }
+  totalKm: number
+  count: number
+}
+
+export function runBests(runs: RunLog[]): RunBests {
+  const out: RunBests = { totalKm: 0, count: 0 }
+  const better = (k: 'longest' | 'farthest' | 'pace' | 'fiveK', v: number, date: string, lower = false) => {
+    const cur = out[k]
+    if (!cur || (lower ? v < cur.v : v > cur.v)) out[k] = { v, date }
+  }
+  for (const r of runs.filter(outdoor)) {
+    out.count++
+    out.totalKm += r.dist / 1000
+    better('farthest', r.dist, r.date)
+    for (const sp of r.splits) {
+      if (sp.kind !== 'run') continue
+      better('longest', sp.dur, r.date)
+      if (sp.dur >= 180 && sp.dist >= 400) better('pace', sp.dur / (sp.dist / 1000), r.date, true)
+    }
+    // Étape « jusqu'à 5 km » menée au bout : c'est le chrono du 5 km.
+    const goal = r.plan >= 0 && RUN_PLAN[r.plan]?.main.some((st) => st.dist)
+    const sp = goal ? r.splits.find((x) => x.kind === 'run' && x.full) : undefined
+    if (sp) better('fiveK', sp.dur, r.date, true)
+  }
+  return out
+}
+
+export function recordsOfRun(r: RunLog, all: RunLog[]): NewRecord[] {
+  if (!outdoor(r)) return []
+  const prev = runBests(all.filter((x) => x.startedAt < r.startedAt && x.id !== r.id))
+  const now = runBests([...all.filter((x) => x.startedAt < r.startedAt && x.id !== r.id), r])
+  const out: NewRecord[] = []
+  const min = (s: number) => `${Math.floor(s / 60)} min${s % 60 >= 30 ? ' 30' : ''}`
+  if (now.fiveK && now.fiveK.date === r.date && (!prev.fiveK || now.fiveK.v < prev.fiveK.v)) {
+    out.push({ icon: '🏁', text: prev.fiveK ? `5 km en ${fmtDur(now.fiveK.v)} (avant ${fmtDur(prev.fiveK.v)})` : `Tes premiers 5 km sans t’arrêter : ${fmtDur(now.fiveK.v)} !` })
+  }
+  if (prev.longest && now.longest!.v > prev.longest.v + 5) out.push({ icon: '🏃', text: `Plus longue course sans t’arrêter : ${min(now.longest!.v)} (avant ${min(prev.longest.v)})` })
+  if (prev.farthest && now.farthest!.v > prev.farthest.v + 50) out.push({ icon: '📏', text: `Plus longue sortie : ${fmtKm(now.farthest!.v)} km` })
+  if (prev.pace && now.pace && now.pace.v < prev.pace.v - 3 && now.pace.date === r.date) out.push({ icon: '⚡', text: `Meilleure allure : ${fmtPace(now.pace.v)} /km (avant ${fmtPace(prev.pace.v)})` })
+  const km = RUN_KM_MILESTONES.find((m) => prev.totalKm < m && now.totalKm >= m)
+  if (km) out.push({ icon: '🎯', text: `${km} km courus au total !` })
+  return out
+}

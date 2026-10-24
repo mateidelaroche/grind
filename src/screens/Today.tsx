@@ -4,16 +4,20 @@ import { SESSIONS } from '../data/sessions'
 import { GearChips, Sheet, Stepper, toast } from '../components/ui'
 import {
   addDays, DAY_LONG, DAY_SHORT, dayPlan, diffDays, formatDate, legWarning, mondayOf, phaseOf, PROGRAM_WEEKS,
-  sessionGear, today, weekday, weekNumber,
+  isRunDay, nextRunDay, runStartOf, sessionGear, today, weekday, weekNumber,
 } from '../lib/program'
 import { useStore } from '../store'
 import type { DayPlan, SessionId } from '../types'
+import type { RunKind } from './Run'
+import { KneeNextCard, RunTodayCard } from './RunViews'
+import { runProgress, RUN_PLAN } from '../data/running'
 import { MeasuresSheet, monthlyDue, testDue, TestsSheet, weighDue, WeighIn } from './Body'
 
 const planIcon = (p: DayPlan) => (p.type === 'session' ? '💪' : p.type === 'basket' ? '🏀' : '😴')
 
-export default function Today({ onStart, onOpenSession, onFood, onPhotos }: {
+export default function Today({ onStart, onOpenSession, onFood, onPhotos, onRun, onRunOpen, onRunProgram }: {
   onStart: (s: SessionId, express: boolean) => void; onOpenSession: (s: SessionId) => void; onFood: () => void; onPhotos: () => void
+  onRun: (k: RunKind) => void; onRunOpen: (id: string) => void; onRunProgram: () => void
 }) {
   const s = useStore()
   const d = today()
@@ -26,6 +30,10 @@ export default function Today({ onStart, onOpenSession, onFood, onPhotos }: {
   const doneOn = (date: string) => s.workouts.filter((w) => w.date === date && w.completed && SESSIONS[w.session].kind === 'muscu')
   const doneToday = doneOn(d)
   const basket = s.basket[d]
+  const runStart = runStartOf(s)
+  const runDone = runProgress(s.runs).index >= RUN_PLAN.length
+  const runDay = (date: string) => isRunDay(date, runStart, runDone)
+  const runToday = runDay(d) || s.runs.some((r) => r.date === d)
 
   const monday = mondayOf(d)
   const days = Array.from({ length: 7 }, (_, i) => addDays(monday, i))
@@ -102,13 +110,16 @@ export default function Today({ onStart, onOpenSession, onFood, onPhotos }: {
         </div>
       )}
 
+      <KneeNextCard />
+
       {/* Aujourd'hui */}
+      {runToday && <RunTodayCard onRun={onRun} onOpen={onRunOpen} />}
       {plan.type === 'session' && (() => {
         const ses = SESSIONS[plan.session]
         return (
           <div className="card accent">
             <div className="row between">
-              <div className="section-title" style={{ margin: 0 }}>Aujourd’hui{plan.moved ? ' · déplacée' : ''}</div>
+              <div className="section-title" style={{ margin: 0 }}>{runToday ? 'Après la course' : 'Aujourd’hui'}{plan.moved ? ' · déplacée' : ''}</div>
               <span className="small muted">{ses.duration}</span>
             </div>
             <div>
@@ -172,17 +183,29 @@ export default function Today({ onStart, onOpenSession, onFood, onPhotos }: {
         </div>
       )}
 
+      {!runDone && d < runStart && diffDays(runStart, d) <= 21 && (
+        <button className="card tap" style={{ flexDirection: 'row', alignItems: 'center' }} onClick={onRunProgram}>
+          <span style={{ fontSize: 22 }}>🏃</span>
+          <div className="grow">
+            <div style={{ fontWeight: 600 }}>La course commence {formatDate(nextRunDay(runStart, runStart))}</div>
+            <div className="small muted">D’ici là, fais une petite sortie libre (même en marchant) pour tester le GPS.</div>
+          </div>
+          <span className="muted">›</span>
+        </button>
+      )}
+
       {/* Semaine */}
       <div className="section-title">Cette semaine</div>
       <div className="week">
         {days.map((date, i) => {
           const p = dayPlan(date, s.overrides)
           const done = doneOn(date).length > 0 || (p.type === 'basket' && s.basket[date]?.done)
+          const run = runDay(date)
           return (
             <div key={date} className={`day ${date === d ? 'today' : ''} ${done ? 'done' : ''}`}>
               <span>{DAY_SHORT[i]}</span>
-              <span className="ic">{done ? '✅' : planIcon(p)}</span>
-              <span>{p.type === 'session' ? p.session : p.type === 'basket' ? (p.match ? 'match' : 'bask.') : '—'}</span>
+              <span className="ic">{done ? '✅' : run ? '🏃' : planIcon(p)}</span>
+              <span>{run && p.type === 'session' ? `+${p.session}` : run ? 'course' : p.type === 'session' ? p.session : p.type === 'basket' ? (p.match ? 'match' : 'bask.') : '—'}</span>
             </div>
           )
         })}

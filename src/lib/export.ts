@@ -41,6 +41,10 @@ export function exportCSV() {
   for (const [date, b] of Object.entries(s.basket)) {
     rows.push([date, 'Basket', '', '', '', '', b.done ? 1 : 0, 1, b.knee !== undefined ? `genou ${b.knee}/10` : ''].map(esc).join(';'))
   }
+  for (const r of s.runs) {
+    const what = r.indoor ? 'Cardio chambre' : r.plan >= 0 ? `Course · sortie ${r.plan + 1}` : 'Course libre'
+    rows.push([r.date, what, '', Math.round(r.dur / 60), 'Distance (km)', '', (r.dist / 1000).toFixed(2).replace('.', ','), '', r.knee !== undefined ? `genou ${r.knee}/10` : ''].map(esc).join(';'))
+  }
   for (const [date, kg] of Object.entries(s.weights)) rows.push([date, 'Poids', '', '', 'Poids (kg)', '', kg, '', ''].map(esc).join(';'))
   for (const [date, m] of Object.entries(s.measures)) {
     for (const [k, v] of Object.entries(m)) rows.push([date, 'Mensuration', '', '', `${k} (cm)`, '', v, '', ''].map(esc).join(';'))

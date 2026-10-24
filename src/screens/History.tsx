@@ -4,6 +4,7 @@ import { celebrate } from '../components/Confetti'
 import { DONE_LINES, pick } from '../data/coach'
 import { recordsOfWorkout } from '../lib/records'
 import { BodyTab, RecordsTab } from './Body'
+import { RunHistoryTab } from './RunViews'
 import { EXERCISES } from '../data/exercises'
 import { SESSIONS } from '../data/sessions'
 import { IconBack } from '../components/icons'
@@ -27,9 +28,9 @@ function streak(workouts: Workout[]) {
   return { n, thisWeek: perWeek.get(thisMonday) ?? 0 }
 }
 
-type Section = 'seances' | 'corps' | 'records'
+type Section = 'seances' | 'course' | 'corps' | 'records'
 
-export function HistoryScreen({ onOpen }: { onOpen: (id: string) => void }) {
+export function HistoryScreen({ onOpen, onRunOpen, onRunProgram }: { onOpen: (id: string) => void; onRunOpen: (id: string) => void; onRunProgram: () => void }) {
   const [section, setSection] = useState<Section>(() => (sessionStorage.getItem('hist') as Section) ?? 'seances')
   const pick = (s: Section) => { setSection(s); try { sessionStorage.setItem('hist', s) } catch { /* ignore */ } }
   return (
@@ -37,10 +38,12 @@ export function HistoryScreen({ onOpen }: { onOpen: (id: string) => void }) {
       <div className="page-title">Historique</div>
       <div className="seg">
         <button className={section === 'seances' ? 'on' : ''} onClick={() => pick('seances')}>Séances</button>
+        <button className={section === 'course' ? 'on' : ''} onClick={() => pick('course')}>Course</button>
         <button className={section === 'corps' ? 'on' : ''} onClick={() => pick('corps')}>Corps</button>
         <button className={section === 'records' ? 'on' : ''} onClick={() => pick('records')}>Records</button>
       </div>
       {section === 'seances' && <Sessions onOpen={onOpen} />}
+      {section === 'course' && <RunHistoryTab onOpen={onRunOpen} onProgram={onRunProgram} />}
       {section === 'corps' && <BodyTab />}
       {section === 'records' && <RecordsTab />}
     </div>
@@ -50,6 +53,7 @@ export function HistoryScreen({ onOpen }: { onOpen: (id: string) => void }) {
 function Sessions({ onOpen }: { onOpen: (id: string) => void }) {
   const workouts = useStore((s) => s.workouts)
   const basket = useStore((s) => s.basket)
+  const runs = useStore((s) => s.runs)
   const { n, thisWeek } = streak(workouts)
   const done = workouts.filter((w) => w.completed).slice().reverse()
   const totalMuscu = workouts.filter(isMuscu).length
@@ -58,10 +62,11 @@ function Sessions({ onOpen }: { onOpen: (id: string) => void }) {
   const weeks = 16
   const start = addDays(mondayOf(today()), -7 * (weeks - 1))
   const muscuDays = new Set(workouts.filter(isMuscu).map((w) => w.date))
+  const runDays = new Set(runs.map((r) => r.date))
   const cells = Array.from({ length: weeks * 7 }, (_, i) => {
     const d = addDays(start, i)
     if (d > today()) return 'x'
-    return muscuDays.has(d) ? 'm' : basket[d]?.done ? 'b' : ''
+    return muscuDays.has(d) ? 'm' : runDays.has(d) ? 'r' : basket[d]?.done ? 'b' : ''
   })
 
   // Séances par semaine (12 dernières), objectif 3
@@ -83,6 +88,7 @@ function Sessions({ onOpen }: { onOpen: (id: string) => void }) {
         <div className="heat">{cells.map((c, i) => <div key={i} className={c} />)}</div>
         <div className="row tiny muted" style={{ gap: 12 }}>
           <span className="row" style={{ gap: 4 }}><span className="dot" style={{ background: 'var(--accent-2)', borderRadius: 3 }} /> Muscu</span>
+          <span className="row" style={{ gap: 4 }}><span className="dot" style={{ background: '#0e7490', borderRadius: 3 }} /> Course</span>
           <span className="row" style={{ gap: 4 }}><span className="dot" style={{ background: '#7c2d12', borderRadius: 3 }} /> Basket</span>
           <span className="grow" style={{ textAlign: 'right' }}>16 dernières semaines</span>
         </div>

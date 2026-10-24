@@ -1,7 +1,7 @@
 // Synchro cloud via un Gist GitHub secret : aucun compte en plus, juste un jeton « gist ».
 import { syncedSnapshot, useStore, type SyncedData } from '../store'
 import { notifyPlan } from './notify'
-import type { Workout } from '../types'
+import type { RunLog, Workout } from '../types'
 
 const FILE = 'grind-data.json'
 const API = 'https://api.github.com'
@@ -49,6 +49,15 @@ function mergeWorkouts(a: Workout[], b: Workout[]) {
   return [...map.values()].sort((x, y) => x.startedAt - y.startedAt)
 }
 
+function mergeRuns(a: RunLog[] = [], b: RunLog[] = []) {
+  const map = new Map<string, RunLog>()
+  for (const r of [...a, ...b]) {
+    const cur = map.get(r.id)
+    if (!cur || (r.edited ?? r.endedAt) > (cur.edited ?? cur.endedAt)) map.set(r.id, r)
+  }
+  return [...map.values()].sort((x, y) => x.startedAt - y.startedAt)
+}
+
 function merge(remote: Doc) {
   const s = useStore.getState()
   const local = syncedSnapshot(s)
@@ -66,6 +75,7 @@ function merge(remote: Doc) {
     ...Object.fromEntries(Object.entries(base).filter(([, v]) => v !== undefined)),
     push: local.push ?? remote.push,
     workouts: mergeWorkouts(local.workouts, remote.workouts),
+    runs: mergeRuns(local.runs, remote.runs),
     basket: map('basket'),
     weights: map('weights'),
     measures: map('measures'),

@@ -3,7 +3,7 @@ import { createJSONStorage, persist, type StateStorage } from 'zustand/middlewar
 import { del, get, set } from 'idb-keyval'
 import { DEFAULT_START, programLevel, today } from './lib/program'
 import type {
-  BasketLog, FoodLog, ItemEdit, LevelEvent, Measures, SessionId, SetRecord, Settings, TestId, TestResult, Workout,
+  BasketLog, FoodLog, ItemEdit, LevelEvent, Measures, RunLog, RunSplit, RunStep, SessionId, SetRecord, Settings, TestId, TestResult, Workout,
 } from './types'
 
 const idbStorage: StateStorage = {
@@ -19,6 +19,24 @@ export interface ActiveSession {
   stepIndex: number
   /** Clés d'étapes validées. */
   done: Record<string, true>
+}
+
+/** Sortie en cours (persistée pour survivre à un redémarrage de l'appli, jamais synchronisée). */
+export interface ActiveRun {
+  id: string
+  date: string
+  plan: number
+  indoor: boolean
+  steps: RunStep[]
+  startedAt: number
+  /** Temps cumulé en pause (ms) et début de la pause en cours. */
+  pausedMs: number
+  pausedAt?: number
+  step: number
+  /** Début de l'étape en cours : temps actif (s) et distance (m). */
+  stepT0: number
+  stepD0: number
+  splits: RunSplit[]
 }
 
 /** Données synchronisées dans le cloud. */
@@ -39,6 +57,9 @@ export interface SyncedData {
   tests: Partial<Record<TestId, TestResult>>
   levelLog: LevelEvent[]
   food: Record<string, FoodLog>
+  runs: RunLog[]
+  /** Début du programme course (par défaut : 2 semaines après la muscu). */
+  runStart?: string
   updatedAt: number
 }
 
@@ -52,6 +73,7 @@ export interface SyncState {
 
 interface State extends SyncedData {
   active?: ActiveSession
+  activeRun?: ActiveRun
   sync: SyncState
   hydrated: boolean
 
@@ -69,6 +91,13 @@ interface State extends SyncedData {
   setGoalWeight: (kg: number) => void
   setTest: (id: TestId, r: TestResult | undefined) => void
   setFood: (date: string, f: FoodLog) => void
+  setRunStart: (d: string | undefined) => void
+  startRun: (r: Pick<ActiveRun, 'plan' | 'indoor' | 'steps'>) => void
+  patchRun: (p: Partial<ActiveRun>) => void
+  finishRun: (log: Omit<RunLog, 'id' | 'date' | 'plan' | 'indoor' | 'startedAt'>) => string | undefined
+  abandonRun: () => void
+  setRunKnee: (id: string, k: { knee?: number; kneeNext?: number }) => void
+  deleteRun: (id: string) => void
 
   startWorkout: (session: SessionId, express: boolean, date: string) => void
   setStep: (i: number) => void
@@ -100,7 +129,7 @@ export const useStore = create<State>()(
         startDate: DEFAULT_START,
         levels: {}, mastered: {}, timeTargets: {}, edits: {}, overrides: {},
         workouts: [], basket: {},
-        weights: {}, measures: {}, goalWeight: 75, tests: {}, levelLog: [], food: {},
+        weights: {}, measures: {}, goalWeight: 75, tests: {}, levelLog: [], food: {}, runs: [],
         settings: DEFAULT_SETTINGS,
         updatedAt: 0,
         sync: { status: 'off' },
@@ -154,6 +183,22 @@ export const useStore = create<State>()(
           return { tests }
         }),
         setFood: (date, f) => upd((s) => ({ food: { ...s.food, [date]: { ...s.food[date], ...f } } })),
+        setRunStart: (d) => upd(() => ({ runStart: d })),
+
+        startRun: (r) => setS({
+          activeRun: { ...r, id: uid(), date: today(), startedAt: Date.now(), pausedMs: 0, step: 0, stepT0: 0, stepD0: 0, splits: [] },
+        }),
+        patchRun: (p) => setS((s) => (s.activeRun ? { activeRun: { ...s.activeRun, ...p } } : {})),
+        finishRun: (log) => {
+          const a = getS().activeRun
+          if (!a) return
+          const run: RunLog = { ...log, id: a.id, date: a.date, plan: a.plan, indoor: a.indoor || undefined, startedAt: a.startedAt }
+          upd((s) => ({ runs: [...s.runs, run], activeRun: undefined }))
+          return a.id
+        },
+        abandonRun: () => setS({ activeRun: undefined }),
+        setRunKnee: (id, k) => upd((s) => ({ runs: s.runs.map((r) => (r.id === id ? { ...r, ...k, edited: Date.now() } : r)) })),
+        deleteRun: (id) => upd((s) => ({ runs: s.runs.filter((r) => r.id !== id) })),
 
         startWorkout: (session, express, date) => {
           const id = uid()
@@ -220,7 +265,7 @@ export const useStore = create<State>()(
       },
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<State>
-        return { ...current, ...p, settings: { ...DEFAULT_SETTINGS, ...p.settings }, sync: { status: 'off', ...p.sync } }
+        return { ...current, ...p, runs: p.runs ?? [], settings: { ...DEFAULT_SETTINGS, ...p.settings }, sync: { status: 'off', ...p.sync } }
       },
       onRehydrateStorage: () => () => useStore.setState({ hydrated: true }),
     },
@@ -232,6 +277,6 @@ export function syncedSnapshot(s: State): SyncedData {
     startDate: s.startDate, levels: s.levels, mastered: s.mastered, timeTargets: s.timeTargets, edits: s.edits,
     overrides: s.overrides, workouts: s.workouts, basket: s.basket, settings: s.settings, push: s.push,
     weights: s.weights, measures: s.measures, goalWeight: s.goalWeight, tests: s.tests, levelLog: s.levelLog, food: s.food,
-    updatedAt: s.updatedAt,
+    runs: s.runs, runStart: s.runStart, updatedAt: s.updatedAt,
   }
 }

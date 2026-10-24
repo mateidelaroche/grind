@@ -1,4 +1,5 @@
 import { EXERCISES } from '../data/exercises'
+import { RUN_DAYS } from '../data/running'
 import { SESSIONS } from '../data/sessions'
 import type { Band, Block, DayPlan, Equip, Item, ItemEdit, Level, Sac, SessionId, Workout } from '../types'
 
@@ -250,4 +251,17 @@ export function suggestions(w: Workout, history: Workout[], levels: Record<strin
     }
   }
   return out
+}
+
+// ───────────── Course ─────────────
+export const runStartOf = (s: { startDate: string; runStart?: string }) => s.runStart ?? addDays(s.startDate, 14)
+/** Jour de sortie prévu (mercredi / dimanche, à partir du début de la course, tant que le programme n'est pas fini). */
+export const isRunDay = (date: string, runStart: string, finished = false) =>
+  !finished && date >= runStart && RUN_DAYS.includes(weekday(date))
+export function nextRunDay(from: string, runStart: string) {
+  for (let i = 0; i < 400; i++) {
+    const d = addDays(from, i)
+    if (isRunDay(d, runStart)) return d
+  }
+  return from
 }
