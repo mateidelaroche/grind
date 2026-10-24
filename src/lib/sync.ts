@@ -52,12 +52,26 @@ function mergeWorkouts(a: Workout[], b: Workout[]) {
 function merge(remote: Doc) {
   const s = useStore.getState()
   const local = syncedSnapshot(s)
-  const base = remote.updatedAt > local.updatedAt ? remote : local
+  const remoteNewer = remote.updatedAt > local.updatedAt
+  const base = remoteNewer ? remote : local
+  // Journaux par date : union des deux côtés, le plus récent gagne en cas de conflit.
+  const map = <T,>(k: 'basket' | 'weights' | 'measures' | 'food' | 'tests') => {
+    const l = (local[k] ?? {}) as Record<string, T>
+    const r = (remote[k] ?? {}) as Record<string, T>
+    return remoteNewer ? { ...l, ...r } : { ...r, ...l }
+  }
+  const events = new Map([...(remote.levelLog ?? []), ...(local.levelLog ?? [])].map((e) => [`${e.ex}:${e.level}`, e]))
   const merged: SyncedData = {
-    ...base,
+    ...local,
+    ...Object.fromEntries(Object.entries(base).filter(([, v]) => v !== undefined)),
     push: local.push ?? remote.push,
     workouts: mergeWorkouts(local.workouts, remote.workouts),
-    basket: remote.updatedAt > local.updatedAt ? { ...local.basket, ...remote.basket } : { ...remote.basket, ...local.basket },
+    basket: map('basket'),
+    weights: map('weights'),
+    measures: map('measures'),
+    food: map('food'),
+    tests: map('tests'),
+    levelLog: [...events.values()].sort((a, b) => a.date.localeCompare(b.date)),
     updatedAt: Math.max(local.updatedAt, remote.updatedAt),
   }
   s.applyRemote(merged)

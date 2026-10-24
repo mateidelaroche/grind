@@ -8,16 +8,21 @@ import {
 } from '../lib/program'
 import { useStore } from '../store'
 import type { DayPlan, SessionId } from '../types'
+import { MeasuresSheet, monthlyDue, testDue, TestsSheet, weighDue, WeighIn } from './Body'
 
 const planIcon = (p: DayPlan) => (p.type === 'session' ? '💪' : p.type === 'basket' ? '🏀' : '😴')
 
-export default function Today({ onStart, onOpenSession }: { onStart: (s: SessionId, express: boolean) => void; onOpenSession: (s: SessionId) => void }) {
+export default function Today({ onStart, onOpenSession, onFood, onPhotos }: {
+  onStart: (s: SessionId, express: boolean) => void; onOpenSession: (s: SessionId) => void; onFood: () => void; onPhotos: () => void
+}) {
   const s = useStore()
   const d = today()
   const week = weekNumber(d, s.startDate)
   const phase = phaseOf(week)
   const plan = dayPlan(d, s.overrides)
   const [moving, setMoving] = useState(false)
+  const [sheet, setSheet] = useState<'tests' | 'measures'>()
+  const testId = testDue(week, s.tests)
   const doneOn = (date: string) => s.workouts.filter((w) => w.date === date && w.completed && SESSIONS[w.session].kind === 'muscu')
   const doneToday = doneOn(d)
   const basket = s.basket[d]
@@ -70,6 +75,32 @@ export default function Today({ onStart, onOpenSession }: { onStart: (s: Session
         )}
         <div className="progress"><div style={{ width: `${Math.min(100, (Math.max(0, diffDays(d, s.startDate) + 1) / (PROGRAM_WEEKS * 7)) * 100)}%` }} /></div>
       </div>
+
+      {/* À faire : tests, pesée, mensurations */}
+      {testId && (
+        <div className="card">
+          <div style={{ fontWeight: 700 }}>🧪 Tests {testId} à faire</div>
+          <div className="small muted">{testId === 'S0' ? 'Avant ta 1re séance : idéalement un jour de repos (dimanche). ~15 min, juste saisir les résultats.' : 'C’est la semaine des tests : compare-toi à toi-même.'}</div>
+          <button className="btn block" onClick={() => setSheet('tests')}>Saisir mes résultats</button>
+        </div>
+      )}
+      {weighDue(s.weights) && weekday(d) === 0 && (
+        <div className="card">
+          <div style={{ fontWeight: 700 }}>⚖️ Pesée du lundi</div>
+          <div className="small muted">Au réveil, après les toilettes, avant de manger.</div>
+          <WeighIn compact />
+        </div>
+      )}
+      {monthlyDue(Object.keys(s.measures)) && weekday(d) <= 1 && (
+        <div className="card">
+          <div style={{ fontWeight: 700 }}>📏 Mensurations & photos du mois</div>
+          <div className="small muted">5 minutes : bras, poitrine, taille, cuisses, puis 3 photos (face, profil, dos).</div>
+          <div className="row">
+            <button className="btn grow" onClick={() => setSheet('measures')}>Mensurations</button>
+            <button className="btn grow" onClick={onPhotos}>Photos</button>
+          </div>
+        </div>
+      )}
 
       {/* Aujourd'hui */}
       {plan.type === 'session' && (() => {
@@ -163,6 +194,18 @@ export default function Today({ onStart, onOpenSession }: { onStart: (s: Session
           <div className="small"><b>Coach :</b> {pick(COACH_LINES)}</div>
         </div>
       )}
+
+      <button className="card tap" style={{ flexDirection: 'row', alignItems: 'center' }} onClick={onFood}>
+        <span style={{ fontSize: 22 }}>🍽️</span>
+        <div className="grow">
+          <div style={{ fontWeight: 600 }}>Alimentation</div>
+          <div className="small muted">3 réflexes zéro effort, si tu veux</div>
+        </div>
+        <span className="muted">›</span>
+      </button>
+
+      {sheet === 'tests' && <TestsSheet initial={testId} onClose={() => setSheet(undefined)} />}
+      {sheet === 'measures' && <MeasuresSheet onClose={() => setSheet(undefined)} />}
 
       {moving && plan.type === 'session' && (
         <Sheet onClose={() => setMoving(false)}>

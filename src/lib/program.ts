@@ -80,6 +80,15 @@ export function effectiveLevel(exId: string, item: Item, userLevels: Record<stri
   return Math.max(0, Math.min(lvl, max))
 }
 
+/** Niveau de départ prévu dans le programme pour un exercice. */
+export function programLevel(exId: string) {
+  for (const s of Object.values(SESSIONS)) {
+    if (s.kind !== 'muscu') continue
+    for (const b of s.blocks) for (const it of b.items) if (it.ex === exId) return it.level ?? 0
+  }
+  return 0
+}
+
 export const levelOf = (exId: string, lvl: number): Level | undefined => EXERCISES[exId].levels?.[lvl]
 export const animOf = (exId: string, lvl: number) => levelOf(exId, lvl)?.anim ?? EXERCISES[exId].anim
 

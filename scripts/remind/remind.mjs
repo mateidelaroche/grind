@@ -22,6 +22,8 @@ const offset = ((Number(parts.hour) - now.getUTCHours()) + 24) % 24
 
 // Chaque créneau a 2 crons (heure d'été / d'hiver) : on ne garde que celui qui correspond au décalage du jour.
 const CRONS = {
+  '30 5 * * 1': { slot: 'matin', offset: 2 },
+  '30 6 * * 1': { slot: 'matin', offset: 1 },
   '30 16 * * *': { slot: 'soir', offset: 2 },
   '30 17 * * *': { slot: 'soir', offset: 1 },
   '0 12 * * *': { slot: 'aprem', offset: 2 },
@@ -41,15 +43,19 @@ if (!res.ok) throw new Error(`Gist ${res.status}`)
 const doc = await res.json()
 
 if (!doc.settings?.reminders || !doc.push) { console.log('Rappels désactivés.'); process.exit(0) }
-const entry = doc.notify?.[parisDate]
-if (!entry) { console.log(`Rien de prévu le ${parisDate}.`); process.exit(0) }
-if (entry.slot !== slot && !FORCE_SLOT) { console.log(`Le ${parisDate} est prévu pour le créneau ${entry.slot}.`); process.exit(0) }
+// V1 : une entrée par jour ; V2 : une liste (pesée du matin + séance du soir…)
+const raw = doc.notify?.[parisDate]
+const entries = (Array.isArray(raw) ? raw : raw ? [raw] : []).filter((e) => e.slot === slot)
+if (!entries.length && FORCE_SLOT) entries.push({ title: 'Grind', body: 'Test de rappel depuis GitHub ✅' })
+if (!entries.length) { console.log(`Rien de prévu le ${parisDate} au créneau ${slot}.`); process.exit(0) }
 
 webpush.setVapidDetails('https://mateidelaroche.github.io/grind/', VAPID_PUBLIC, VAPID_PRIVATE)
-try {
-  await webpush.sendNotification(doc.push, JSON.stringify({ title: entry.title, body: entry.body }), { TTL: 3600 })
-  console.log(`Notification envoyée (${parisDate}, ${slot}).`)
-} catch (e) {
-  console.log(`Échec de l'envoi : ${e.statusCode ?? ''} ${e.body ?? e.message}`)
-  if (e.statusCode !== 404 && e.statusCode !== 410) process.exit(1)
+for (const entry of entries) {
+  try {
+    await webpush.sendNotification(doc.push, JSON.stringify({ title: entry.title, body: entry.body }), { TTL: 3600 })
+    console.log(`Notification envoyée (${parisDate}, ${slot}) : ${entry.title}`)
+  } catch (e) {
+    console.log(`Échec de l'envoi : ${e.statusCode ?? ''} ${e.body ?? e.message}`)
+    if (e.statusCode !== 404 && e.statusCode !== 410) process.exit(1)
+  }
 }

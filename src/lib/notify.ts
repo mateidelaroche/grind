@@ -1,35 +1,48 @@
 // Rappels : l'appli publie dans le Gist le planning des 14 prochains jours ;
 // une GitHub Action lit ce planning chaque jour et envoie la notification push.
 import { SESSIONS } from '../data/sessions'
-import { addDays, dayPlan, today, weekday } from './program'
+import { addDays, dayPlan, diffDays, today, weekday } from './program'
 import { useStore } from '../store'
 
 export const VAPID_PUBLIC = 'BPE_idk0pbeaic5AyJKqU7q_GCI1ivJJSyWO0Q-pBvfTvpZwftqDMI7LgUbua84sX8u02MmOF8DoMq2GQcEDGlY'
 
-export interface NotifyEntry { slot: 'soir' | 'aprem'; title: string; body: string }
+export interface NotifyEntry { slot: 'matin' | 'soir' | 'aprem'; title: string; body: string }
 
-export function notifyPlan(s: { overrides: Record<string, string>; settings: { reminders: boolean } }): Record<string, NotifyEntry> {
+export function notifyPlan(s: {
+  overrides: Record<string, string>; settings: { reminders: boolean }; measures: Record<string, unknown>
+}): Record<string, NotifyEntry[]> {
   if (!s.settings.reminders) return {}
-  const out: Record<string, NotifyEntry> = {}
+  const out: Record<string, NotifyEntry[]> = {}
   const d0 = today()
+  const lastMeasure = Object.keys(s.measures ?? {}).sort().at(-1)
   for (let i = 0; i < 14; i++) {
     const date = addDays(d0, i)
     const plan = dayPlan(date, s.overrides)
     const weekend = weekday(date) >= 5
+    const list: NotifyEntry[] = []
+    if (weekday(date) === 0) {
+      const monthly = !lastMeasure || diffDays(date, lastMeasure) >= 28
+      list.push({
+        slot: 'matin',
+        title: '⚖️ Pesée du lundi',
+        body: monthly ? 'Au réveil, avant de manger. Et c’est le moment des mensurations + photos du mois 📏' : 'Au réveil, après les toilettes, avant de manger.',
+      })
+    }
     if (plan.type === 'session') {
       const ses = SESSIONS[plan.session]
-      out[date] = {
+      list.push({
         slot: weekend ? 'aprem' : 'soir',
         title: `💪 ${ses.name} ${weekend ? 'aujourd’hui' : 'ce soir'}`,
         body: `${ses.subtitle} · ${ses.duration}. Pas le temps ? Fais l’express en 25 min.`,
-      }
+      })
     } else if (plan.type === 'basket') {
-      out[date] = {
+      list.push({
         slot: 'soir',
         title: plan.match ? '🏀 Match ce soir' : '🏀 Basket ce soir',
         body: 'Fais ta routine genoux (7 min) avant de partir.',
-      }
+      })
     }
+    if (list.length) out[date] = list
   }
   return out
 }

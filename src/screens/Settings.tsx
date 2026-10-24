@@ -37,6 +37,9 @@ export default function Settings() {
         <SettingRow title="Vue par défaut" desc={s.settings.view === 'guided' ? 'Guidée : un exercice à la fois' : 'Liste : tous les exercices'}>
           <button className="btn sm" onClick={() => set({ view: s.settings.view === 'guided' ? 'list' : 'guided' })}>{s.settings.view === 'guided' ? 'Guidée' : 'Liste'}</button>
         </SettingRow>
+        <SettingRow title="Animations 3D" desc="Mannequin à faire tourner avec le doigt (sinon silhouette 2D)">
+          <Toggle on={s.settings.anim3d} onChange={(v) => set({ anim3d: v })} />
+        </SettingRow>
         <SettingRow title="Bips sonores" desc="Décompte 3-2-1 et fin de chrono, par-dessus ta musique">
           <Toggle on={s.settings.sounds} onChange={(v) => set({ sounds: v })} />
         </SettingRow>
@@ -57,7 +60,7 @@ export default function Settings() {
 
       <div className="section-title">Rappels</div>
       <div className="card" style={{ padding: '4px 16px', gap: 0 }}>
-        <SettingRow title="Notifications" desc="18h30 les jours de séance et de basket, 14h le week-end">
+        <SettingRow title="Notifications" desc="18h30 séance ou basket · 14h le week-end · lundi 7h30 pesée">
           <Toggle on={s.settings.reminders} onChange={async (v) => {
             if (v) { const err = await enableReminders(); if (err) toast(err); else toast('Rappels activés 🔔') }
             else void disableReminders()

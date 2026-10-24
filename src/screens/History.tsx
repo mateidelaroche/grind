@@ -1,9 +1,14 @@
+import { useEffect, useState } from 'react'
+import { BarChart } from '../components/Charts'
+import { celebrate } from '../components/Confetti'
 import { DONE_LINES, pick } from '../data/coach'
+import { recordsOfWorkout } from '../lib/records'
+import { BodyTab, RecordsTab } from './Body'
 import { EXERCISES } from '../data/exercises'
 import { SESSIONS } from '../data/sessions'
 import { IconBack } from '../components/icons'
 import { toast } from '../components/ui'
-import { addDays, formatDate, levelOf, mondayOf, suggestions, today } from '../lib/program'
+import { addDays, formatDate, fromISO, levelOf, mondayOf, suggestions, today } from '../lib/program'
 import { useStore } from '../store'
 import type { Workout } from '../types'
 
@@ -22,7 +27,27 @@ function streak(workouts: Workout[]) {
   return { n, thisWeek: perWeek.get(thisMonday) ?? 0 }
 }
 
+type Section = 'seances' | 'corps' | 'records'
+
 export function HistoryScreen({ onOpen }: { onOpen: (id: string) => void }) {
+  const [section, setSection] = useState<Section>(() => (sessionStorage.getItem('hist') as Section) ?? 'seances')
+  const pick = (s: Section) => { setSection(s); try { sessionStorage.setItem('hist', s) } catch { /* ignore */ } }
+  return (
+    <div className="page">
+      <div className="page-title">Historique</div>
+      <div className="seg">
+        <button className={section === 'seances' ? 'on' : ''} onClick={() => pick('seances')}>Séances</button>
+        <button className={section === 'corps' ? 'on' : ''} onClick={() => pick('corps')}>Corps</button>
+        <button className={section === 'records' ? 'on' : ''} onClick={() => pick('records')}>Records</button>
+      </div>
+      {section === 'seances' && <Sessions onOpen={onOpen} />}
+      {section === 'corps' && <BodyTab />}
+      {section === 'records' && <RecordsTab />}
+    </div>
+  )
+}
+
+function Sessions({ onOpen }: { onOpen: (id: string) => void }) {
   const workouts = useStore((s) => s.workouts)
   const basket = useStore((s) => s.basket)
   const { n, thisWeek } = streak(workouts)
@@ -39,9 +64,16 @@ export function HistoryScreen({ onOpen }: { onOpen: (id: string) => void }) {
     return muscuDays.has(d) ? 'm' : basket[d]?.done ? 'b' : ''
   })
 
+  // Séances par semaine (12 dernières), objectif 3
+  const perWeek = Array.from({ length: 12 }, (_, i) => {
+    const m = addDays(mondayOf(today()), -7 * (11 - i))
+    const value = workouts.filter((w) => isMuscu(w) && mondayOf(w.date) === m).length
+    const label = fromISO(m).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+    return { key: m, label, value, tip: `Semaine du ${label} : ${value} séance${value > 1 ? 's' : ''}` }
+  })
+
   return (
-    <div className="page">
-      <div className="page-title">Historique</div>
+    <>
       <div className="stats">
         <div className="stat"><span className="big-num">🔥 {n}</span><span className="tiny muted">semaine{n > 1 ? 's' : ''} d’affilée (3+ séances)</span></div>
         <div className="stat"><span className="big-num">{thisWeek}/3</span><span className="tiny muted">séances cette semaine</span></div>
@@ -54,6 +86,11 @@ export function HistoryScreen({ onOpen }: { onOpen: (id: string) => void }) {
           <span className="row" style={{ gap: 4 }}><span className="dot" style={{ background: '#7c2d12', borderRadius: 3 }} /> Basket</span>
           <span className="grow" style={{ textAlign: 'right' }}>16 dernières semaines</span>
         </div>
+      </div>
+      <div className="card">
+        <div style={{ fontWeight: 700 }}>Séances muscu par semaine</div>
+        <BarChart data={perWeek} target={3} />
+        <div className="tiny muted">Pointillés : objectif de 3 séances.</div>
       </div>
       <div className="section-title">Séances</div>
       {done.length === 0 && <div className="muted small">Aucune séance pour l’instant. La première est la plus importante 💪</div>}
@@ -69,17 +106,21 @@ export function HistoryScreen({ onOpen }: { onOpen: (id: string) => void }) {
           </div>
         </button>
       ))}
-    </div>
+    </>
   )
 }
 
 export function Recap({ id, onBack, fresh }: { id: string; onBack: () => void; fresh?: boolean }) {
   const s = useStore()
   const w = s.workouts.find((x) => x.id === id)
+  const hasRecords = !!w && recordsOfWorkout(w, s.workouts).length > 0
+  useEffect(() => { if (fresh && hasRecords) celebrate() }, [fresh, hasRecords])
   if (!w) return <div className="page"><button className="btn" onClick={onBack}>Retour</button></div>
   const prev = s.workouts.filter((x) => x.session === w.session && x.completed && x.startedAt < w.startedAt).at(-1)
   const sugg = suggestions(w, s.workouts.filter((x) => x.startedAt < w.startedAt), s.levels)
   const pct = setsTotal(w) ? Math.round((setsDone(w) / setsTotal(w)) * 100) : 100
+  const records = recordsOfWorkout(w, s.workouts)
+  const milk = s.food[w.date]?.lait
 
   return (
     <div className="page">
@@ -91,6 +132,19 @@ export function Recap({ id, onBack, fresh }: { id: string; onBack: () => void; f
         </div>
       </div>
       {fresh && s.settings.coach && <div className="card accent"><b>{pick(DONE_LINES, w.startedAt)}</b></div>}
+      {records.length > 0 && (
+        <div className="card" style={{ gap: 6, borderColor: '#a16207' }}>
+          <div style={{ fontWeight: 800 }}>🏆 Record{records.length > 1 ? 's' : ''} battu{records.length > 1 ? 's' : ''}</div>
+          {records.map((r, i) => <div key={i} className="small">{r.icon} {r.text}</div>)}
+        </div>
+      )}
+      {fresh && s.settings.coach && SESSIONS[w.session].kind === 'muscu' && (
+        <div className="card" style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <span style={{ fontSize: 24 }}>🥛</span>
+          <div className="grow small">Un verre de lait ou un yaourt maintenant ? 30 secondes, et ça aide à grossir.</div>
+          <button className={`btn sm ${milk ? 'primary' : ''}`} onClick={() => s.setFood(w.date, { lait: !milk })}>{milk ? '✓ Fait' : 'Fait'}</button>
+        </div>
+      )}
       <div className="stats">
         <div className="stat"><span className="big-num">{minutes(w) ?? '–'}</span><span className="tiny muted">minutes</span></div>
         <div className="stat"><span className="big-num">{setsDone(w)}/{setsTotal(w)}</span><span className="tiny muted">séries</span></div>
@@ -115,7 +169,7 @@ export function Recap({ id, onBack, fresh }: { id: string; onBack: () => void; f
                 <div style={{ fontWeight: 700 }}>{EXERCISES[g.ex].name}</div>
                 <div className="small muted">{g.reason}</div>
                 <div className="small">{levelOf(g.ex, g.from)?.label} → <b>{levelOf(g.ex, g.to)?.label}</b></div>
-                <button className={`btn sm ${applied ? '' : 'primary'}`} disabled={applied} onClick={() => { s.setLevel(g.ex, g.to); toast('Niveau mis à jour pour la prochaine séance 💪') }}>
+                <button className={`btn sm ${applied ? '' : 'primary'}`} disabled={applied} onClick={() => { s.setLevel(g.ex, g.to); celebrate(); toast(`🆙 ${EXERCISES[g.ex].name} : niveau ${g.to + 1} débloqué`) }}>
                   {applied ? '✓ Appliqué' : 'Passer au niveau suivant'}
                 </button>
               </div>

@@ -35,6 +35,8 @@ const pushup: AnimDef = {
 }
 
 const pushupDiamond: AnimDef = {
+  mod: 'diamond',
+  cam: { az: 60, el: 25 },
   keys: [pushupPose([40, 145], 97, 146), pushupPose([40, 145], 133, 146)],
   dur: [1.4, 0.8], hold: [0.4, 0.4],
 }
@@ -53,7 +55,7 @@ function pikePose(shoulderUp: boolean): Pose {
   const t = (Math.atan2(S[1] - P[1], S[0] - P[0]) * 180) / Math.PI
   return { p: P, t, h: t + (shoulderUp ? 15 : 10), aN: { ik: H }, aF: { ik: [H[0] - 2, H[1]] }, lN: { ik: [58, 146] }, lF: { ik: [56, 146] }, fN: 110, fF: 110 }
 }
-const pike: AnimDef = { keys: [pikePose(true), pikePose(false)], dur: [1.3, 0.8], hold: [0.4, 0.4] }
+const pike: AnimDef = { mod: 'pike', keys: [pikePose(true), pikePose(false)], dur: [1.3, 0.8], hold: [0.4, 0.4] }
 
 const dipsBed: AnimDef = {
   scene: [{ k: 'bed', x: 10, w: 74 }],
@@ -67,10 +69,12 @@ const dipsBed: AnimDef = {
 const DOOR_ANCHOR_MID: V = [40, 52]
 const flyBand: AnimDef = {
   scene: [{ k: 'door', x: 36 }],
-  bands: [{ from: DOOR_ANCHOR_MID, to: { j: 'handN' } }],
+  bands: [{ from: DOOR_ANCHOR_MID, to: { j: 'handN' }, z: 34 }],
+  mod: 'fly',
+  cam: { az: 25, el: 55 },
   keys: [
-    stand(100, { aN: { a: [175, 172] } }),
-    stand(100, { aN: { a: [5, 0] } }),
+    stand(100, { aN: { a: [175, 172] }, u: 0 }),
+    stand(100, { aN: { a: [5, 0] }, u: 1 }),
   ],
   dur: [1.2, 1.4], hold: [0.3, 0.6],
 }
@@ -107,7 +111,8 @@ const rowSeated: AnimDef = {
 }
 
 const rowBackpack: AnimDef = {
-  scene: [{ k: 'bed', x: 20, w: 150 }],
+  // En 3D, le lit est du côté de l'appui : la jambe tendue reste au sol à côté.
+  scene: [{ k: 'bed', x: 20, w: 150, z: -48 }],
   sac: { j: 'handN', o: [0, 8] },
   keys: [
     { p: [70, 76], t: -4, h: 10, aF: { ik: [114, bedTop] }, aN: { a: [90, 90] }, lF: { a: [88, 180] }, lN: { ik: [64, FL] }, fF: 180 },
@@ -142,10 +147,12 @@ const pullover: AnimDef = {
 
 const facePull: AnimDef = {
   scene: [{ k: 'door', x: 178 }],
-  bands: [{ from: [178, 16], to: { j: 'handN' } }],
+  bands: [{ from: [178, 16], to: { j: 'handN' } }, { from: [178, 16], to: { j: 'handF' } }],
+  mod: 'facePull',
+  cam: { az: 55, el: 15 },
   keys: [
-    stand(100, { aN: { a: [-4, -4] }, aF: { a: [-6, -6] } }),
-    stand(100, { aN: { a: [-172, -62] }, aF: { a: [-174, -64] } }),
+    stand(100, { aN: { a: [-4, -4] }, aF: { a: [-6, -6] }, u: 0 }),
+    stand(100, { aN: { a: [-172, -62] }, aF: { a: [-174, -64] }, u: 1 }),
   ],
   dur: [1.0, 1.4], hold: [0.3, 0.6],
 }
@@ -396,7 +403,15 @@ const stHip = breathe(
   { p: [94, 115], t: -84 },
 )
 
+// Silhouettes guides pour les photos de progression
+const guideFace: AnimDef = {
+  view: 'front', noFloor: true, dur: [1],
+  keys: [stand(100, { aN: { a: [75, 85] }, aF: { a: [105, 95] }, lN: { ik: [107, FL] }, lF: { ik: [93, FL] } })],
+}
+const guideProfil: AnimDef = { noFloor: true, dur: [1], keys: [stand(100)] }
+
 export const ANIMS: Record<string, AnimDef> = {
+  'guide-face': guideFace, 'guide-profil': guideProfil,
   pushup, 'pushup-decline': pushupDecline, 'pushup-diamond': pushupDiamond, pike, 'dips-bed': dipsBed,
   'fly-band': flyBand, 'lat-raise': latRaise, 'triceps-oh': tricepsOh,
   'row-seated': rowSeated, 'row-backpack': rowBackpack, 'pulldown-kneel': pulldownKneel, pullover,

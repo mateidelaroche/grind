@@ -9,6 +9,9 @@ import './styles.css'
 
 registerSW({ immediate: true })
 
+// Dev uniquement : accès au store depuis la console / les tests.
+if (import.meta.env.DEV) (window as unknown as { __store: typeof useStore }).__store = useStore
+
 // iOS n'autorise le son qu'après un premier geste : on l'active au premier tap.
 window.addEventListener('pointerdown', unlockAudio, { once: true })
 

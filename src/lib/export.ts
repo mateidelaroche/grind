@@ -1,6 +1,7 @@
 import { EXERCISES } from '../data/exercises'
 import { SESSIONS } from '../data/sessions'
 import { syncedSnapshot, useStore, type SyncedData } from '../store'
+import { exportPhotos, importPhotos } from './photos'
 import { levelOf } from './program'
 
 const esc = (v: unknown) => {
@@ -40,15 +41,26 @@ export function exportCSV() {
   for (const [date, b] of Object.entries(s.basket)) {
     rows.push([date, 'Basket', '', '', '', '', b.done ? 1 : 0, 1, b.knee !== undefined ? `genou ${b.knee}/10` : ''].map(esc).join(';'))
   }
+  for (const [date, kg] of Object.entries(s.weights)) rows.push([date, 'Poids', '', '', 'Poids (kg)', '', kg, '', ''].map(esc).join(';'))
+  for (const [date, m] of Object.entries(s.measures)) {
+    for (const [k, v] of Object.entries(m)) rows.push([date, 'Mensuration', '', '', `${k} (cm)`, '', v, '', ''].map(esc).join(';'))
+  }
+  for (const [id, t] of Object.entries(s.tests)) {
+    for (const [k, v] of Object.entries(t!.values)) rows.push([t!.date, `Test ${id}`, '', '', k, '', v, '', ''].map(esc).join(';'))
+  }
   return share(`grind-${stamp()}.csv`, '﻿' + rows.join('\n'), 'text/csv')
 }
 
-export function exportJSON() {
-  return share(`grind-sauvegarde-${stamp()}.json`, JSON.stringify(syncedSnapshot(useStore.getState()), null, 1), 'application/json')
+/** Sauvegarde complète, photos comprises (elles ne sont pas dans la synchro). */
+export async function exportJSON() {
+  const doc = { ...syncedSnapshot(useStore.getState()), photos: await exportPhotos() }
+  return share(`grind-sauvegarde-${stamp()}.json`, JSON.stringify(doc), 'application/json')
 }
 
 export async function importJSON(file: File) {
-  const data = JSON.parse(await file.text()) as SyncedData
+  const data = JSON.parse(await file.text()) as SyncedData & { photos?: Parameters<typeof importPhotos>[0] }
   if (!Array.isArray(data.workouts) || !data.settings) throw new Error('Fichier non reconnu')
-  useStore.getState().applyRemote({ ...data, updatedAt: Date.now() })
+  const { photos, ...rest } = data
+  useStore.getState().applyRemote({ ...rest, updatedAt: Date.now() })
+  if (photos?.length) await importPhotos(photos)
 }

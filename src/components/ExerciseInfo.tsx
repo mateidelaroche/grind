@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import Demo from '../anim/Demo'
 import Figure from '../anim/Figure'
 import { EXERCISES } from '../data/exercises'
 import { animOf, gearForExercise, levelOf } from '../lib/program'
@@ -47,7 +48,7 @@ export function ExerciseBlock({ exId, level, children }: { exId: string; level: 
 
   return (
     <div className="stack">
-      <Figure anim={animOf(exId, level)} band={lvl?.band} className="figure" />
+      <Demo anim={animOf(exId, level)} band={lvl?.band} />
       <div className="stack" style={{ gap: 4 }}>
         <div className="ex-name">{ex.name}</div>
         <div className="small muted">{ex.muscles}{lvl && ex.levels!.length > 1 ? ` · ${lvl.label}` : ''}</div>

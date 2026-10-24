@@ -1,8 +1,10 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware'
 import { del, get, set } from 'idb-keyval'
-import { DEFAULT_START } from './lib/program'
-import type { BasketLog, ItemEdit, SessionId, SetRecord, Settings, Workout } from './types'
+import { DEFAULT_START, programLevel, today } from './lib/program'
+import type {
+  BasketLog, FoodLog, ItemEdit, LevelEvent, Measures, SessionId, SetRecord, Settings, TestId, TestResult, Workout,
+} from './types'
 
 const idbStorage: StateStorage = {
   getItem: async (k) => (await get<string>(k)) ?? null,
@@ -31,6 +33,12 @@ export interface SyncedData {
   basket: Record<string, BasketLog>
   settings: Settings
   push?: PushSubscriptionJSON
+  weights: Record<string, number>
+  measures: Record<string, Measures>
+  goalWeight: number
+  tests: Partial<Record<TestId, TestResult>>
+  levelLog: LevelEvent[]
+  food: Record<string, FoodLog>
   updatedAt: number
 }
 
@@ -56,6 +64,11 @@ interface State extends SyncedData {
   setOverride: (date: string, v: string | undefined) => void
   setBasket: (date: string, log: BasketLog | undefined) => void
   setStartDate: (d: string) => void
+  setWeight: (date: string, kg: number | undefined) => void
+  setMeasures: (date: string, m: Measures | undefined) => void
+  setGoalWeight: (kg: number) => void
+  setTest: (id: TestId, r: TestResult | undefined) => void
+  setFood: (date: string, f: FoodLog) => void
 
   startWorkout: (session: SessionId, express: boolean, date: string) => void
   setStep: (i: number) => void
@@ -72,7 +85,7 @@ interface State extends SyncedData {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
-  sounds: true, voice: false, metronome: false, coach: true, wakeLock: true, view: 'guided', reminders: false,
+  sounds: true, voice: false, metronome: false, coach: true, wakeLock: true, view: 'guided', reminders: false, anim3d: true,
 }
 
 const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36)
@@ -87,6 +100,7 @@ export const useStore = create<State>()(
         startDate: DEFAULT_START,
         levels: {}, mastered: {}, timeTargets: {}, edits: {}, overrides: {},
         workouts: [], basket: {},
+        weights: {}, measures: {}, goalWeight: 75, tests: {}, levelLog: [], food: {},
         settings: DEFAULT_SETTINGS,
         updatedAt: 0,
         sync: { status: 'off' },
@@ -94,7 +108,11 @@ export const useStore = create<State>()(
 
         touch: () => upd(() => ({})),
         setSettings: (p) => upd((s) => ({ settings: { ...s.settings, ...p } })),
-        setLevel: (ex, lvl) => upd((s) => ({ levels: { ...s.levels, [ex]: lvl } })),
+        setLevel: (ex, lvl) => upd((s) => {
+          const prev = s.levels[ex] ?? programLevel(ex)
+          const levelLog = lvl > prev ? [...s.levelLog, { ex, level: lvl, date: today() }] : s.levelLog
+          return { levels: { ...s.levels, [ex]: lvl }, levelLog }
+        }),
         setMastered: (ex, v) => upd((s) => ({ mastered: { ...s.mastered, [ex]: v } })),
         setTimeTarget: (ex, sec) => upd((s) => ({ timeTargets: { ...s.timeTargets, [ex]: sec } })),
         setEdit: (key, e) => upd((s) => {
@@ -116,6 +134,26 @@ export const useStore = create<State>()(
           return { basket }
         }),
         setStartDate: (d) => upd(() => ({ startDate: d })),
+        setWeight: (date, kg) => upd((s) => {
+          const weights = { ...s.weights }
+          if (kg) weights[date] = kg
+          else delete weights[date]
+          return { weights }
+        }),
+        setMeasures: (date, m) => upd((s) => {
+          const measures = { ...s.measures }
+          if (m && Object.values(m).some((v) => v)) measures[date] = m
+          else delete measures[date]
+          return { measures }
+        }),
+        setGoalWeight: (kg) => upd(() => ({ goalWeight: kg })),
+        setTest: (id, r) => upd((s) => {
+          const tests = { ...s.tests }
+          if (r) tests[id] = r
+          else delete tests[id]
+          return { tests }
+        }),
+        setFood: (date, f) => upd((s) => ({ food: { ...s.food, [date]: { ...s.food[date], ...f } } })),
 
         startWorkout: (session, express, date) => {
           const id = uid()
@@ -133,7 +171,8 @@ export const useStore = create<State>()(
         recordSet: (recKey, rec, delta) => updWorkout((w) => {
           const prev = w.sets[recKey]
           const done = Math.max(0, Math.min(rec.total, (prev?.done ?? 0) + delta))
-          return { ...w, sets: { ...w.sets, [recKey]: { ...rec, done, flags: prev?.flags ?? [] } } }
+          const best = Math.max(prev?.best ?? 0, rec.best ?? 0) || undefined
+          return { ...w, sets: { ...w.sets, [recKey]: { ...rec, done, best, flags: prev?.flags ?? [] } } }
         }),
         flagSet: (recKey, flag) => updWorkout((w) => {
           const prev = w.sets[recKey]
@@ -164,7 +203,11 @@ export const useStore = create<State>()(
 
         setSync: (p) => setS((s) => ({ sync: { ...s.sync, ...p } })),
         setPush: (p) => upd(() => ({ push: p })),
-        applyRemote: (d) => setS(() => ({ ...d })),
+        // Un document plus ancien (V1) n'a pas tous les champs : on garde l'existant pour ceux-là.
+        applyRemote: (d) => setS((s) => ({
+          ...Object.fromEntries(Object.entries(d).filter(([, v]) => v !== undefined)),
+          settings: { ...DEFAULT_SETTINGS, ...s.settings, ...d.settings },
+        })),
       }
     },
     {
@@ -187,6 +230,8 @@ export const useStore = create<State>()(
 export function syncedSnapshot(s: State): SyncedData {
   return {
     startDate: s.startDate, levels: s.levels, mastered: s.mastered, timeTargets: s.timeTargets, edits: s.edits,
-    overrides: s.overrides, workouts: s.workouts, basket: s.basket, settings: s.settings, push: s.push, updatedAt: s.updatedAt,
+    overrides: s.overrides, workouts: s.workouts, basket: s.basket, settings: s.settings, push: s.push,
+    weights: s.weights, measures: s.measures, goalWeight: s.goalWeight, tests: s.tests, levelLog: s.levelLog, food: s.food,
+    updatedAt: s.updatedAt,
   }
 }

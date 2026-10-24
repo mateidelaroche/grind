@@ -81,6 +81,37 @@ export interface SetRecord {
   total: number
   level: number
   flags: ('hard' | 'easy')[]
+  /** Exercices en temps : plus longue durée tenue jusqu'au bout (s). */
+  best?: number
+}
+
+export type MeasureKey = 'brasD' | 'brasG' | 'poitrine' | 'taille' | 'cuisseD' | 'cuisseG'
+export type Measures = Partial<Record<MeasureKey, number>>
+
+export type TestKey = 'pompes' | 'pike' | 'planche' | 'chaise' | 'bulgareD' | 'bulgareG' | 'tractions'
+export type TestId = 'S0' | 'S6' | 'S12'
+export interface TestResult {
+  date: string
+  values: Partial<Record<TestKey, number>>
+}
+
+export interface LevelEvent {
+  ex: string
+  level: number
+  date: string
+}
+
+export interface FoodLog {
+  lait?: boolean
+  gouter?: boolean
+  sandwich?: boolean
+}
+
+export type PhotoPose = 'face' | 'profil' | 'dos'
+export interface PhotoMeta {
+  id: string
+  date: string
+  pose: PhotoPose
 }
 
 export interface Workout {
@@ -108,6 +139,7 @@ export interface Settings {
   wakeLock: boolean
   view: 'guided' | 'list'
   reminders: boolean
+  anim3d: boolean
 }
 
 export interface ItemEdit {

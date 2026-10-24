@@ -27,15 +27,18 @@ export interface Pose {
   lF: Limb
   fN?: number
   fF?: number
+  /** Avancement libre (0 → 1) interpolé, utilisé par les retouches 3D. */
+  u?: number
 }
 
 export type SceneItem =
-  | { k: 'bed'; x: number; w: number; h?: number }
+  | { k: 'bed'; x: number; w: number; h?: number; z?: number }
   | { k: 'door'; x: number }
   | { k: 'wall'; x: number }
   | { k: 'books'; x: number; w: number; h: number }
 
-export interface BandDef { from: Target; to: Target }
+/** z : profondeur 3D d'un point d'ancrage fixe. */
+export interface BandDef { from: Target; to: Target; z?: number }
 
 export interface AnimDef {
   view?: 'side' | 'front'
@@ -47,6 +50,10 @@ export interface AnimDef {
   bands?: BandDef[]
   sac?: Target
   noFloor?: boolean
+  /** Vue 3D par défaut : azimut (0 = profil, 90 = face) et élévation, en degrés. */
+  cam?: { az: number; el: number }
+  /** Retouche 3D nommée (mouvements hors du plan), voir skeleton3d.ts. */
+  mod?: string
 }
 
 export const FLOOR = 150
@@ -153,6 +160,7 @@ export function lerpPose(a: Pose, b: Pose, k: number): Pose {
     lF: lerpLimb(a.lF, b.lF, k),
     fN: lerpA(a.fN ?? 0, b.fN ?? 0, k),
     fF: lerpA(a.fF ?? 0, b.fF ?? 0, k),
+    u: lerp(a.u ?? 0, b.u ?? 0, k),
   }
 }
 

@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { IconBook, IconChart, IconGear, IconList, IconToday } from './components/icons'
+import { ConfettiHost } from './components/Confetti'
 import { ToastHost } from './components/ui'
+import Food from './screens/Food'
 import { today } from './lib/program'
 import { ExerciseDetail, ExercisesList } from './screens/Exercises'
 import { HistoryScreen, Recap } from './screens/History'
@@ -16,6 +18,7 @@ type Page =
   | { p: 'session'; id: SessionId }
   | { p: 'exercise'; id: string }
   | { p: 'recap'; id: string; fresh?: boolean }
+  | { p: 'food' }
 
 const TABS: { id: Tab; label: string; icon: () => React.JSX.Element }[] = [
   { id: 'today', label: 'Aujourd’hui', icon: IconToday },
@@ -57,7 +60,17 @@ export default function App() {
   if (page?.p === 'session') content = <SessionDetail id={page.id} onBack={pop} onStart={start} onExercise={(id) => push({ p: 'exercise', id })} />
   else if (page?.p === 'exercise') content = <ExerciseDetail id={page.id} onBack={pop} />
   else if (page?.p === 'recap') content = <Recap id={page.id} fresh={page.fresh} onBack={pop} />
-  else if (tab === 'today') content = <Today onStart={start} onOpenSession={(id) => push({ p: 'session', id })} />
+  else if (page?.p === 'food') content = <Food onBack={pop} />
+  else if (tab === 'today') {
+    content = (
+      <Today
+        onStart={start}
+        onOpenSession={(id) => push({ p: 'session', id })}
+        onFood={() => push({ p: 'food' })}
+        onPhotos={() => { try { sessionStorage.setItem('hist', 'corps') } catch { /* ignore */ } setTab('history') }}
+      />
+    )
+  }
   else if (tab === 'sessions') content = <SessionsList onOpen={(id) => push({ p: 'session', id })} />
   else if (tab === 'exercises') content = <ExercisesList onOpen={(id) => push({ p: 'exercise', id })} />
   else if (tab === 'history') content = <HistoryScreen onOpen={(id) => push({ p: 'recap', id })} />
@@ -75,6 +88,7 @@ export default function App() {
         ))}
       </nav>
       <ToastHost />
+      <ConfettiHost />
     </div>
   )
 }

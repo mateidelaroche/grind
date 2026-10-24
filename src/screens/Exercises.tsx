@@ -1,9 +1,10 @@
+import Demo from '../anim/Demo'
 import Figure from '../anim/Figure'
 import { EXERCISES } from '../data/exercises'
 import { HowTo } from '../components/ExerciseInfo'
 import { IconBack } from '../components/icons'
 import { GearChips, SettingRow, Stepper, Toggle } from '../components/ui'
-import { animOf, gearForExercise, levelOf } from '../lib/program'
+import { animOf, gearForExercise, levelOf, programLevel } from '../lib/program'
 import { useStore } from '../store'
 import { BAND_COLORS } from '../anim/Figure'
 import { SESSIONS } from '../data/sessions'
@@ -16,12 +17,6 @@ const CATS: [string, string[]][] = [
   ['Échauffement & genoux', ['march', 'arm-circles', 'cat-cow', 'scap-pushup', 'inchworm', 'glute-bridge', 'clamshell', 'tke', 'tib-raise', 'wall-sit', 'bw-squat']],
   ['Étirements', ['st-pecs', 'st-child', 'st-quad', 'st-hams', 'st-hip']],
 ]
-
-/** Niveau de départ prévu dans le programme pour un exercice. */
-function programLevel(exId: string) {
-  for (const s of Object.values(SESSIONS)) for (const b of s.blocks) for (const it of b.items) if (it.ex === exId && s.kind === 'muscu') return it.level ?? 0
-  return 0
-}
 
 export function ExercisesList({ onOpen }: { onOpen: (id: string) => void }) {
   const levels = useStore((s) => s.levels)
@@ -70,7 +65,7 @@ export function ExerciseDetail({ id, onBack }: { id: string; onBack: () => void 
         <button className="icon-btn" onClick={onBack} aria-label="Retour"><IconBack /></button>
         <div className="grow ex-name">{ex.name}</div>
       </div>
-      <Figure anim={animOf(id, lvl)} band={level?.band} className="figure" />
+      <Demo anim={animOf(id, lvl)} band={level?.band} />
       <div className="small muted">{ex.muscles}</div>
       <GearChips gear={gearForExercise(id, lvl)} />
       <HowTo exId={id} />

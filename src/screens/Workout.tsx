@@ -73,9 +73,12 @@ export function RestTimer({ seconds, resetKey, onDone, nextLabel, feedback }: {
 }
 
 // ───────────── Exercice en temps ─────────────
-function TimedWork({ step, onDone }: { step: Step; onDone: () => void }) {
+/** onDone reçoit le temps réellement tenu (s). */
+function TimedWork({ step, onDone }: { step: Step; onDone: (held: number) => void }) {
   const setTimeTarget = useStore((s) => s.setTimeTarget)
-  const t = useCountdown(step.duration ?? 30, { prep: 3, autoStart: !!step.autoStart, resetKey: step.key, onEnd: onDone })
+  const totalRef = useRef(step.duration ?? 30)
+  const t = useCountdown(step.duration ?? 30, { prep: 3, autoStart: !!step.autoStart, resetKey: step.key, onEnd: () => onDone(totalRef.current) })
+  totalRef.current = t.total
   const ringRef = useRef<HTMLDivElement>(null)
   const running = t.state === 'run' || t.state === 'prep'
   useEffect(() => {
@@ -103,7 +106,7 @@ function TimedWork({ step, onDone }: { step: Step; onDone: () => void }) {
         {t.state === 'idle' && <button className="btn primary big block" onClick={() => { unlockAudio(); t.start() }}><IconPlay /> Démarrer</button>}
         {running && <button className="btn big block" onClick={t.pause}><IconPause /> Pause · {t.state === 'prep' ? `départ dans ${t.prepLeft}` : fmtTime(t.remaining)}</button>}
         {t.state === 'paused' && <button className="btn primary big block" onClick={t.resume}><IconPlay /> Reprendre</button>}
-        {t.state !== 'idle' && <button className="btn sm ghost" onClick={onDone}>Terminer maintenant</button>}
+        {t.state !== 'idle' && <button className="btn sm ghost" onClick={() => onDone(t.state === 'prep' ? 0 : Math.round(t.total - t.remaining))}>Terminer maintenant</button>}
       </div>
     </div>
   )
@@ -111,7 +114,7 @@ function TimedWork({ step, onDone }: { step: Step; onDone: () => void }) {
 
 // ───────────── Vue guidée ─────────────
 function Guided({ steps, active, onValidate, onUnvalidate, onFinish }: {
-  steps: Step[]; active: ActiveSession; onValidate: (i: number) => void; onUnvalidate: (i: number) => void; onFinish: () => void
+  steps: Step[]; active: ActiveSession; onValidate: (i: number, held?: number) => void; onUnvalidate: (i: number) => void; onFinish: () => void
 }) {
   const setStep = useStore((s) => s.setStep)
   const flagSet = useStore((s) => s.flagSet)
@@ -185,7 +188,7 @@ function Guided({ steps, active, onValidate, onUnvalidate, onFinish }: {
       {sameRoundNext && nextLabel && <div className="next-hint">⚡ Superset : enchaîne <b>sans repos</b> avec {nextLabel}</div>}
 
       {st.duration ? (
-        <TimedWork step={st} onDone={() => onValidate(i)} />
+        <TimedWork step={st} onDone={(held) => onValidate(i, held)} />
       ) : (
         <div className="workout-actions">
           {done ? (
@@ -208,7 +211,7 @@ function Guided({ steps, active, onValidate, onUnvalidate, onFinish }: {
 
 // ───────────── Vue liste ─────────────
 function ListView({ steps, active, onToggle, onFinish }: {
-  steps: Step[]; active: ActiveSession; onToggle: (i: number) => void; onFinish: () => void
+  steps: Step[]; active: ActiveSession; onToggle: (i: number, held?: number) => void; onFinish: () => void
 }) {
   const [rest, setRest] = useState<number>()
   const [timed, setTimed] = useState<number>()
@@ -276,7 +279,7 @@ function ListView({ steps, active, onToggle, onFinish }: {
       {timed !== undefined && (
         <Sheet onClose={() => setTimed(undefined)}>
           <div className="ex-name">{EXERCISES[steps[timed].ex!].name}</div>
-          <TimedWork step={{ ...steps[timed], autoStart: false }} onDone={() => { onToggle(timed); setTimed(undefined) }} />
+          <TimedWork step={{ ...steps[timed], autoStart: false }} onDone={(held) => { onToggle(timed, held); setTimed(undefined) }} />
         </Sheet>
       )}
     </div>
@@ -330,9 +333,9 @@ export default function Workout({ onFinished }: { onFinished: (id: string) => vo
 
   useEffect(() => { void keepAwake(true); return () => void keepAwake(false) }, [])
 
-  const record = (i: number, delta: 1 | -1) => {
+  const record = (i: number, delta: 1 | -1, held?: number) => {
     const st = steps[i]
-    if (st.recKey && st.side !== 'gauche') recordSet(st.recKey, { ex: st.ex!, total: st.rounds!, level: st.level ?? 0 }, delta)
+    if (st.recKey && st.side !== 'gauche') recordSet(st.recKey, { ex: st.ex!, total: st.rounds!, level: st.level ?? 0, best: held }, delta)
   }
   const finish = () => {
     beep.done()
@@ -340,13 +343,13 @@ export default function Workout({ onFinished }: { onFinished: (id: string) => vo
     const id = finishWorkout()
     if (id) onFinished(id)
   }
-  const validate = (i: number) => {
-    if (!active.done[steps[i].key]) { markStep(steps[i].key, true); record(i, 1) }
+  const validate = (i: number, held?: number) => {
+    if (!active.done[steps[i].key]) { markStep(steps[i].key, true); record(i, 1, held) }
     if (i + 1 >= steps.length) finish()
     else setStep(i + 1)
   }
   const unvalidate = (i: number) => { markStep(steps[i].key, false); record(i, -1) }
-  const toggle = (i: number) => (active.done[steps[i].key] ? unvalidate(i) : (markStep(steps[i].key, true), record(i, 1)))
+  const toggle = (i: number, held?: number) => (active.done[steps[i].key] ? unvalidate(i) : (markStep(steps[i].key, true), record(i, 1, held)))
 
   const doneCount = steps.filter((x) => x.kind === 'work' && active.done[x.key]).length
   const workCount = steps.filter((x) => x.kind === 'work').length

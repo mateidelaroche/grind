@@ -2,6 +2,9 @@ name: Rappels
 
 on:
   schedule:
+    # Lundi 7h30 Paris : pesée (été / hiver)
+    - cron: '30 5 * * 1'
+    - cron: '30 6 * * 1'
     # 18h30 Paris (été / hiver)
     - cron: '30 16 * * *'
     - cron: '30 17 * * *'
@@ -11,7 +14,7 @@ on:
   workflow_dispatch:
     inputs:
       slot:
-        description: 'Forcer un créneau pour tester (soir / aprem)'
+        description: 'Forcer un créneau pour tester (matin / soir / aprem)'
         default: soir
 
 permissions:
