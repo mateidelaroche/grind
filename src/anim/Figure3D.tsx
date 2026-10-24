@@ -4,31 +4,119 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { ANIMS } from './anims'
 import { BAND_COLORS } from './Figure'
 import { cycleLength, FLOOR, poseAt, type AnimDef, type Target } from './rig'
-import { skeleton3d, type Joints3, type V3 } from './skeleton3d'
+import { add3, mul3, norm3, skeleton3d, sub3, type Joints3, type V3 } from './skeleton3d'
 import type { Band } from '../types'
 
-const BODY = '#d9e0ea'
-const BODY_FAR = '#9aa6b8'
+const SKIN = '#dcb293'
+const SKIN_FAR = '#a47f66'
+const SHIRT = '#3d5585'
+const SHIRT_FAR = '#2c3d61'
+const SHORTS = '#2b3342'
+const SHORTS_FAR = '#20262f'
+const SHOES = '#e2e6ec'
+const HAIR = '#3a2b22'
 const SCENE = '#243046'
 const SCENE_HI = '#33415a'
 
-type Seg = { a: keyof Joints3; b: keyof Joints3; r: number; far?: boolean }
-const SEGS: Seg[] = [
-  { a: 'pelvis', b: 'spineMid', r: 9.5 },
-  { a: 'spineMid', b: 'neck', r: 10 },
-  { a: 'shoulderN', b: 'shoulderF', r: 6 },
-  { a: 'hipN', b: 'hipF', r: 7.5 },
-  { a: 'neck', b: 'head', r: 3.6 },
-  { a: 'shoulderN', b: 'elbowN', r: 4.4 }, { a: 'elbowN', b: 'handN', r: 3.7 },
-  { a: 'shoulderF', b: 'elbowF', r: 4.4, far: true }, { a: 'elbowF', b: 'handF', r: 3.7, far: true },
-  { a: 'hipN', b: 'kneeN', r: 6.2 }, { a: 'kneeN', b: 'ankleN', r: 4.9 }, { a: 'ankleN', b: 'toeN', r: 3.1 },
-  { a: 'hipF', b: 'kneeF', r: 6.2, far: true }, { a: 'kneeF', b: 'ankleF', r: 4.9, far: true }, { a: 'ankleF', b: 'toeF', r: 3.1, far: true },
-]
-const BALLS: { j: keyof Joints3; r: number; far?: boolean }[] = [
-  { j: 'elbowN', r: 3.9 }, { j: 'handN', r: 4 }, { j: 'kneeN', r: 5.2 }, { j: 'ankleN', r: 3.6 },
-  { j: 'elbowF', r: 3.9, far: true }, { j: 'handF', r: 4, far: true }, { j: 'kneeF', r: 5.2, far: true }, { j: 'ankleF', r: 3.6, far: true },
-  { j: 'shoulderN', r: 6 }, { j: 'shoulderF', r: 6 }, { j: 'hipN', r: 7.5 }, { j: 'hipF', r: 7.5 }, { j: 'spineMid', r: 9.8 },
-]
+/** Profil d'un segment : [t le long de l'os (0 → 1), demi-largeur (côtés), profondeur devant, profondeur derrière]. */
+type Row = [number, number, number?, number?]
+
+/** Tube à section ovale, de hauteur 1 (y de −0,5 à 0,5) : étiré ensuite à la longueur de l'os. */
+function tube(rows: Row[], k = 1, seg = 20): THREE.BufferGeometry {
+  const pos: number[] = []
+  const idx: number[] = []
+  const ring = seg + 1
+  for (const [t, w, df = w, db = df] of rows) {
+    for (let i = 0; i <= seg; i++) {
+      const th = (i / seg) * Math.PI * 2
+      const c = Math.cos(th)
+      pos.push(c * (c > 0 ? df : db), t - 0.5, Math.sin(th) * w * k)
+    }
+  }
+  for (let r = 0; r < rows.length - 1; r++) {
+    for (let i = 0; i < seg; i++) {
+      const a = r * ring + i, b = a + ring
+      idx.push(a, b, a + 1, a + 1, b, b + 1)
+    }
+  }
+  // Bouts fermés
+  const cap = (r: number, flip: boolean) => {
+    const c = pos.length / 3
+    pos.push(0, rows[r][0] - 0.5, 0)
+    for (let i = 0; i < seg; i++) {
+      const a = r * ring + i
+      if (flip) idx.push(c, a + 1, a)
+      else idx.push(c, a, a + 1)
+    }
+  }
+  cap(0, false)
+  cap(rows.length - 1, true)
+  const g = new THREE.BufferGeometry()
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3))
+  g.setIndex(idx)
+  g.computeVertexNormals()
+  return g
+}
+
+/** Ne garde que la partie [t0, t1] d'un profil, un peu plus large (manche, short). */
+function sleeve(rows: Row[], t0: number, t1: number, extra: number): Row[] {
+  const at = (t: number): Row => {
+    const i = Math.max(1, rows.findIndex((r) => r[0] >= t))
+    const [a, b] = [rows[i - 1], rows[i] ?? rows[i - 1]]
+    const k = b[0] === a[0] ? 0 : (t - a[0]) / (b[0] - a[0])
+    const m = (x?: number, y?: number, d = 0) => (x ?? d) + ((y ?? d) - (x ?? d)) * k
+    return [t, m(a[1], b[1]), m(a[2] ?? a[1], b[2] ?? b[1]), m(a[3] ?? a[2] ?? a[1], b[3] ?? b[2] ?? b[1])]
+  }
+  const inner = rows.filter((r) => r[0] > t0 && r[0] < t1)
+  return [at(t0), ...inner, at(t1)].map(([t, w, df, db]) => [t, w + extra, (df ?? w) + extra, (db ?? df ?? w) + extra])
+}
+
+// Galbes, morphologie fine (mêmes proportions que la silhouette 2D).
+const THIGH: Row[] = [[0, 6.8], [0.18, 7], [0.55, 6], [0.88, 4.8], [1, 4.6]]
+const SHIN: Row[] = [[0, 4.5], [0.22, 4.8, 4.5, 5.6], [0.45, 4.4, 4, 4.9], [0.85, 3], [1, 2.9]]
+const UPPER_ARM: Row[] = [[0, 4.8], [0.3, 4.5], [0.65, 4.1], [1, 3.4]]
+const FOREARM: Row[] = [[0, 3.5], [0.25, 3.8], [0.7, 2.9], [1, 2.5]]
+const NECK: Row[] = [[0, 3.5], [0.75, 3.2]]
+// Tronc en deux morceaux (bassin → milieu du dos → base du cou) : [t, demi-largeur, ventre/poitrine, fesses/dos].
+const TORSO_LOW: Row[] = [[-0.2, 9.5, 5, 6.5], [0.08, 12, 6.2, 8.4], [0.56, 10.8, 6, 6.4], [1, 10.4, 6.2, 6]]
+const TORSO_HIGH: Row[] = [[0, 10.4, 6.2, 6], [0.44, 12.8, 8.2, 7], [0.8, 14, 7.2, 6.8], [1, 12.6, 6, 6.2], [1.12, 5, 4, 4]]
+
+type Seg = { a: keyof Joints3; b: keyof Joints3; geo: THREE.BufferGeometry; mat: string }
+type Ball = { j: keyof Joints3; r: number; mat: string }
+
+function body(front: boolean) {
+  // De face, le squelette 2D a les épaules plus serrées : le tronc suit.
+  const k = front ? 0.83 : 1
+  const limbs = (side: 'N' | 'F'): Seg[] => {
+    const f = side === 'F' ? 'Far' : ''
+    return [
+      { a: `hip${side}`, b: `knee${side}`, geo: tube(THIGH), mat: 'skin' + f },
+      { a: `hip${side}`, b: `knee${side}`, geo: tube(sleeve(THIGH, -0.04, 0.42, 0.5)), mat: 'shorts' + f },
+      { a: `knee${side}`, b: `ankle${side}`, geo: tube(SHIN), mat: 'skin' + f },
+      { a: `shoulder${side}`, b: `elbow${side}`, geo: tube(UPPER_ARM), mat: 'skin' + f },
+      { a: `shoulder${side}`, b: `elbow${side}`, geo: tube(sleeve(UPPER_ARM, -0.05, 0.4, 0.45)), mat: 'shirt' + f },
+      { a: `elbow${side}`, b: `hand${side}`, geo: tube(FOREARM), mat: 'skin' + f },
+    ] as Seg[]
+  }
+  const segs: Seg[] = [
+    { a: 'pelvis', b: 'spineMid', geo: tube(TORSO_LOW, k), mat: 'shirt' },
+    { a: 'pelvis', b: 'spineMid', geo: tube(sleeve(TORSO_LOW, -0.2, 0.3, 0.45), k), mat: 'shorts' },
+    { a: 'spineMid', b: 'neck', geo: tube(TORSO_HIGH, k), mat: 'shirt' },
+    { a: 'neck', b: 'head', geo: tube(NECK), mat: 'skin' },
+    ...limbs('N'),
+    ...limbs('F'),
+  ]
+  const balls: Ball[] = (['N', 'F'] as const).flatMap((side) => {
+    const f = side === 'F' ? 'Far' : ''
+    return [
+      { j: `shoulder${side}`, r: 5.3, mat: 'shirt' + f },
+      { j: `elbow${side}`, r: 3.5, mat: 'skin' + f },
+      { j: `knee${side}`, r: 4.6, mat: 'skin' + f },
+      { j: `ankle${side}`, r: 3, mat: 'skin' + f },
+    ] as Ball[]
+  })
+  return { segs, balls }
+}
 
 const UP = new THREE.Vector3(0, 1, 0)
 const tmpA = new THREE.Vector3()
@@ -41,6 +129,20 @@ function placeCylinder(m: THREE.Mesh, a: V3, b: V3) {
   m.position.copy(tmpA).add(tmpB).multiplyScalar(0.5)
   m.scale.set(1, Math.max(0.001, len), 1)
   m.quaternion.setFromUnitVectors(UP, tmpB.sub(tmpA).normalize())
+}
+
+const tmpM = new THREE.Matrix4()
+const tmpC = new THREE.Vector3()
+/** Oriente un objet : son axe x suit `fwd`, son axe y suit `up` (redressé pour être perpendiculaire). */
+function orient(o: THREE.Object3D, fwd: V3, up: V3) {
+  tmpB.set(...up).normalize()
+  const along = tmpA.set(...fwd).dot(tmpB)
+  tmpA.addScaledVector(tmpB, -along)
+  if (tmpA.lengthSq() < 1e-6) tmpA.set(1, 0, 0).addScaledVector(tmpB, -tmpB.x)
+  tmpA.normalize()
+  tmpC.crossVectors(tmpA, tmpB)
+  tmpM.makeBasis(tmpA, tmpB, tmpC)
+  o.quaternion.setFromRotationMatrix(tmpM)
 }
 
 function resolve3(tg: Target, j: Joints3, cx: number, z = 0): V3 {
@@ -127,26 +229,43 @@ export default function Figure3D({ anim: id, band, className }: Props) {
     scene.add(grid)
     buildScene(anim, cx, scene)
 
-    // Mannequin
-    const near = new THREE.MeshStandardMaterial({ color: BODY, roughness: 0.55, metalness: 0.05 })
-    const far = new THREE.MeshStandardMaterial({ color: BODY_FAR, roughness: 0.6, metalness: 0.05 })
-    const cyl = new THREE.CylinderGeometry(1, 1, 1, 18)
+    // Mannequin : peau, t-shirt, short, chaussures
+    const std = (color: string, roughness = 0.65) => new THREE.MeshStandardMaterial({ color, roughness, metalness: 0 })
+    const mats: Record<string, THREE.Material> = {
+      skin: std(SKIN, 0.6), skinFar: std(SKIN_FAR, 0.65), shirt: std(SHIRT, 0.8), shirtFar: std(SHIRT_FAR, 0.85),
+      shorts: std(SHORTS, 0.85), shortsFar: std(SHORTS_FAR, 0.9), shoes: std(SHOES, 0.5), hair: std(HAIR, 0.9),
+    }
     const ball = new THREE.SphereGeometry(1, 20, 14)
-    const shadowed = <T extends THREE.Mesh>(m: T) => { m.castShadow = true; m.receiveShadow = true; scene.add(m); return m }
-    const segs = SEGS.map((s) => {
-      const m = shadowed(new THREE.Mesh(cyl, s.far ? far : near))
-      m.userData.r = s.r
-      return m
-    })
+    const shadowed = <T extends THREE.Object3D>(m: T) => { m.castShadow = true; m.receiveShadow = true; scene.add(m); return m }
+    const { segs: SEGS, balls: BALLS } = body(anim.view === 'front')
+    const segs = SEGS.map((s) => shadowed(new THREE.Mesh(s.geo, mats[s.mat])))
     const balls = BALLS.map((b) => {
-      const m = shadowed(new THREE.Mesh(ball, b.far ? far : near))
+      const m = shadowed(new THREE.Mesh(ball, mats[b.mat]))
       m.scale.setScalar(b.r)
       return m
     })
-    const head = shadowed(new THREE.Mesh(ball, near))
-    head.scale.setScalar(9.2)
-    const nose = shadowed(new THREE.Mesh(ball, new THREE.MeshStandardMaterial({ color: '#60a5fa', roughness: 0.4 })))
-    nose.scale.setScalar(2.6)
+    const part = (parent: THREE.Object3D, mat: string, sc: V3, at: V3 = [0, 0, 0], geo: THREE.BufferGeometry = ball) => {
+      const m = new THREE.Mesh(geo, mats[mat])
+      m.scale.set(...sc)
+      m.position.set(...at)
+      m.castShadow = true
+      parent.add(m)
+      return m
+    }
+    // Tête dans son repère : x = visage, y = sommet du crâne, z = côté.
+    const head = shadowed(new THREE.Group())
+    part(head, 'skin', [8, 9.2, 7.3], [-0.4, 0.4, 0])
+    part(head, 'skin', [5.6, 4.6, 5.6], [2.6, -4.4, 0])
+    part(head, 'skin', [2, 2.3, 1.4], [7.9, -0.8, 0])
+    part(head, 'skin', [1.3, 2.4, 1.1], [-0.8, -0.4, 7.2])
+    part(head, 'skin', [1.3, 2.4, 1.1], [-0.8, -0.4, -7.2])
+    const cap = new THREE.SphereGeometry(1, 22, 12, 0, Math.PI * 2, 0, Math.PI * 0.42)
+    part(head, 'hair', [8.6, 9.8, 7.9], [-0.9, 0.6, 0], cap).rotation.z = 0.5
+    // Mains en moufle, chaussures
+    const hands = (['N', 'F'] as const).map((side) => shadowed(new THREE.Mesh(ball, mats[side === 'N' ? 'skin' : 'skinFar'])))
+    const shoes = (['N', 'F'] as const).map(() => shadowed(new THREE.Mesh(ball, mats.shoes)))
+    const beds = (anim.scene ?? []).flatMap((s) => (s.k === 'bed' ? [{ y: s.h ?? 36, x0: s.x - cx, x1: s.x - cx + s.w }] : []))
+    const cyl = new THREE.CylinderGeometry(1, 1, 1, 18)
     const sac = anim.sac ? shadowed(new THREE.Mesh(new THREE.BoxGeometry(16, 19, 11), new THREE.MeshStandardMaterial({ color: '#3f526e', roughness: 0.8 }))) : undefined
     const bandMat = new THREE.MeshStandardMaterial({ color: BAND_COLORS[band ?? 'M'], roughness: 0.5, emissive: BAND_COLORS[band ?? 'M'], emissiveIntensity: 0.15 })
     const bands = (anim.bands ?? []).map(() => shadowed(new THREE.Mesh(cyl, bandMat)))
@@ -207,13 +326,29 @@ export default function Figure3D({ anim: id, band, className }: Props) {
       raf = requestAnimationFrame(frame)
       if (document.hidden) return
       const j = skeleton3d(anim, poseAt(anim, (now - start) / 1000))
-      SEGS.forEach((s, i) => {
-        placeCylinder(segs[i], j[s.a] as V3, j[s.b] as V3)
-        segs[i].scale.x = segs[i].scale.z = s.r
-      })
+      SEGS.forEach((s, i) => placeCylinder(segs[i], j[s.a] as V3, j[s.b] as V3))
       BALLS.forEach((b, i) => balls[i].position.set(...(j[b.j] as V3)))
+      const upv = norm3(sub3(j.head, j.neck))
+      orient(head, j.face, upv)
       head.position.set(...j.head)
-      nose.position.set(j.head[0] + j.face[0] * 8.3, j.head[1] + j.face[1] * 8.3, j.head[2] + j.face[2] * 8.3)
+      ;(['N', 'F'] as const).forEach((side, i) => {
+        // Main : dans le prolongement de l'avant-bras, ou à plat (doigts vers l'avant) quand elle est en appui.
+        const hand = j[`hand${side}`]
+        let d = norm3(sub3(hand, j[`elbow${side}`]))
+        const onSupport = d[1] < -0.4 && (hand[1] < 5 || beds.some((b) => Math.abs(hand[1] - b.y) < 6 && hand[0] >= b.x0 && hand[0] <= b.x1))
+        if (onSupport) d = [1, 0, 0]
+        hands[i].position.set(...add3(hand, mul3(d, 3.2)))
+        hands[i].quaternion.setFromUnitVectors(UP, tmpA.set(...d))
+        if (onSupport) hands[i].scale.set(1.9, 4.4, 3.2)
+        else hands[i].scale.set(2.6, 4.4, 3)
+        // Chaussure : du talon aux orteils, semelle du côté opposé au tibia.
+        const ankle = j[`ankle${side}`]
+        const fd = norm3(sub3(j[`toe${side}`], ankle))
+        const shin = norm3(sub3(j[`knee${side}`], ankle))
+        orient(shoes[i], fd, shin)
+        shoes[i].position.set(...add3(add3(ankle, mul3(fd, 3.8)), mul3(shin, 0.6)))
+        shoes[i].scale.set(7.6, 2.9, 3.6)
+      })
       if (sac && anim.sac) {
         const c = resolve3(anim.sac, j, cx)
         sac.position.set(...c)

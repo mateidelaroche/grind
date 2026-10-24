@@ -83,7 +83,7 @@ export function solve2(root: V, target: V, l1: number, l2: number, bend: 1 | -1)
   return along(root, th + bend * alpha, l1)
 }
 
-export type Skeleton = Record<JointName, V> & { t: number; c: number; view: 'side' | 'front' }
+export type Skeleton = Record<JointName, V> & { t: number; c: number; view: 'side' | 'front'; fN: number; fF: number }
 
 function resolve(tg: Target, sk: Partial<Skeleton>): V {
   if (Array.isArray(tg)) return tg
@@ -105,7 +105,7 @@ function limb(root: V, lb: Limb, l1: number, l2: number, defBend: 1 | -1, sk: Pa
 }
 
 export function skeleton(pose: Pose, view: 'side' | 'front' = 'side'): Skeleton {
-  const sk: Partial<Skeleton> = { view, t: pose.t, c: pose.c ?? 0 }
+  const sk: Partial<Skeleton> = { view, t: pose.t, c: pose.c ?? 0, fN: pose.fN ?? 0, fF: pose.fF ?? 0 }
   const neck = along(pose.p, pose.t, L.torso)
   sk.pelvis = pose.p
   sk.hip = pose.p

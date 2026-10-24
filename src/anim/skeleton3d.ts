@@ -8,8 +8,8 @@ export type V3 = [number, number, number]
 /** Repère 3D : X = devant le personnage, Y = haut, Z = côté proche (droite en vue de profil). */
 export type Joints3 = Record<JointName, V3> & { spineMid: V3; face: V3 }
 
-const SHOULDER_W = 16
-const HIP_W = 9
+const SHOULDER_W = 15
+const HIP_W = 7.5
 
 const sideZ = (name: string) => (name.endsWith('N') ? 1 : name.endsWith('F') ? -1 : 0)
 const isArm = (name: string) => /^(shoulder|elbow|hand)/.test(name)

@@ -3,7 +3,9 @@ import { createRoot } from 'react-dom/client'
 import Figure from './anim/Figure'
 import { ANIMS } from './anim/anims'
 
-const only = new URLSearchParams(location.search).get('only')?.split(',')
+const q = new URLSearchParams(location.search)
+const only = q.get('only')?.split(',')
+if (q.get('cols')) document.documentElement.style.setProperty('--cols', q.get('cols'))
 
 function Gallery() {
   const ids = Object.keys(ANIMS).filter((id) => !only || only.includes(id))
