@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware'
 import { del, get, set } from 'idb-keyval'
-import { DEFAULT_START, programLevel, today } from './lib/program'
+import { addDays, DEFAULT_START, OLD_START, programLevel, today } from './lib/program'
 import type {
   BasketLog, FoodLog, ItemEdit, LevelEvent, Measures, RunLog, RunSplit, RunStep, SessionId, SetRecord, Settings, TestId, TestResult, Workout,
 } from './types'
@@ -251,6 +251,7 @@ export const useStore = create<State>()(
         // Un document plus ancien (V1) n'a pas tous les champs : on garde l'existant pour ceux-là.
         applyRemote: (d) => setS((s) => ({
           ...Object.fromEntries(Object.entries(d).filter(([, v]) => v !== undefined)),
+          ...(d.startDate === OLD_START ? { startDate: DEFAULT_START, updatedAt: Date.now() } : {}),
           settings: { ...DEFAULT_SETTINGS, ...s.settings, ...d.settings },
         })),
       }
@@ -265,6 +266,12 @@ export const useStore = create<State>()(
       },
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<State>
+        // Programme décalé d'une semaine : muscu et course repartent une semaine plus tard (une seule fois).
+        if (p.startDate === OLD_START) {
+          p.startDate = DEFAULT_START
+          if (p.runStart && p.runStart <= addDays(OLD_START, 21)) p.runStart = addDays(p.runStart, 7)
+          p.updatedAt = Date.now()
+        }
         return { ...current, ...p, runs: p.runs ?? [], settings: { ...DEFAULT_SETTINGS, ...p.settings }, sync: { status: 'off', ...p.sync } }
       },
       onRehydrateStorage: () => () => useStore.setState({ hydrated: true }),

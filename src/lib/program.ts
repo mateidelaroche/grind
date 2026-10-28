@@ -30,7 +30,9 @@ export const formatDate = (s: string) =>
 export const mondayOf = (s: string) => addDays(s, -weekday(s))
 
 // ───────────── Programme ─────────────
-export const DEFAULT_START = '2026-10-26'
+export const DEFAULT_START = '2026-11-02'
+/** Ancienne date de début (programme décalé d'une semaine le 28/10/2026). */
+export const OLD_START = '2026-10-26'
 export const PROGRAM_WEEKS = 12
 
 export function weekNumber(date: string, start: string): number {
