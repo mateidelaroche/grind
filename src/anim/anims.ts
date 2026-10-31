@@ -30,21 +30,21 @@ function pushupPose(ankle: V, shoulderY: number, handX: number, handY = FL, extr
 
 // ───────────── POUSSÉE ─────────────
 const pushup: AnimDef = {
-  keys: [pushupPose([40, 145], 97, 152), pushupPose([40, 145], 133, 152)],
+  keys: [pushupPose([40, 145], 97, 152), pushupPose([40, 145], 127, 152)],
   dur: [1.8, 0.9], hold: [0.4, 0.5],
 }
 
 const pushupDiamond: AnimDef = {
   mod: 'diamond',
   cam: { az: 60, el: 25 },
-  keys: [pushupPose([40, 145], 97, 146), pushupPose([40, 145], 133, 146)],
+  keys: [pushupPose([40, 145], 97, 146), pushupPose([40, 145], 127, 146)],
   dur: [1.4, 0.8], hold: [0.4, 0.4],
 }
 
 const bedTop = FLOOR - 36
 const pushupDecline: AnimDef = {
   scene: [{ k: 'bed', x: -10, w: 66 }],
-  keys: [pushupPose([48, bedTop - 3], 96, 158), pushupPose([48, bedTop - 3], 133, 158)].map((k) => ({ ...k, fN: 170, fF: 170 })),
+  keys: [pushupPose([48, bedTop - 3], 96, 158), pushupPose([48, bedTop - 3], 127, 158)].map((k) => ({ ...k, fN: 170, fF: 170 })),
   dur: [1.4, 0.8], hold: [0.4, 0.5],
 }
 

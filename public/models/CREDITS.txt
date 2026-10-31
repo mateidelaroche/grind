@@ -1,0 +1,3 @@
+athlete.glb : « Superhero Male » (boxer recoloré en anthracite) + coiffure « Simple Parted », pack Universal Base Characters
+par Quaternius (https://quaternius.com), licence CC0 1.0 (domaine public).
+Optimisé avec glTF-Transform (textures WebP 1024 px, géométrie meshopt).

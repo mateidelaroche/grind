@@ -4,6 +4,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { ANIMS } from './anims'
 import { BAND_COLORS } from './Figure'
 import { cycleLength, FLOOR, poseAt, type AnimDef, type Target } from './rig'
+import { loadAthlete, makeAthlete, type Athlete } from './athlete'
 import { add3, mul3, norm3, skeleton3d, sub3, type Joints3, type V3 } from './skeleton3d'
 import type { Band } from '../types'
 
@@ -182,9 +183,10 @@ function buildScene(anim: AnimDef, cx: number, scene: THREE.Scene) {
 
 export type CamPreset = 'profil' | '3/4' | 'face' | 'dessus'
 
-interface Props { anim: string; band?: Band; className?: string }
+/** at : instant figé du cycle (s), pour les captures de la page de dev. */
+interface Props { anim: string; band?: Band; className?: string; at?: number; cam?: { az: number; el: number } }
 
-export default function Figure3D({ anim: id, band, className }: Props) {
+export default function Figure3D({ anim: id, band, className, at, cam }: Props) {
   const ref = useRef<HTMLDivElement>(null)
   const api = useRef<{ setView: (p: CamPreset) => void }>(undefined)
   const [failed, setFailed] = useState(false)
@@ -266,6 +268,18 @@ export default function Figure3D({ anim: id, band, className }: Props) {
     const shoes = (['N', 'F'] as const).map(() => shadowed(new THREE.Mesh(ball, mats.shoes)))
     const beds = (anim.scene ?? []).flatMap((s) => (s.k === 'bed' ? [{ y: s.h ?? 36, x0: s.x - cx, x1: s.x - cx + s.w }] : []))
     const cyl = new THREE.CylinderGeometry(1, 1, 1, 18)
+    // Personnage réaliste : remplace le mannequin dès qu'il est chargé (le mannequin reste en secours).
+    let athlete: Athlete | undefined
+    let disposed = false
+    const holds = (k: 'handN' | 'handF') =>
+      (anim.bands ?? []).some((b) => [b.from, b.to].some((t) => !Array.isArray(t) && t.j === k)) || (!!anim.sac && !Array.isArray(anim.sac) && anim.sac.j === k)
+    const grip: [boolean, boolean] = [holds('handN'), holds('handF')]
+    loadAthlete().then((src) => {
+      if (disposed) return
+      athlete = makeAthlete(src)
+      scene.add(athlete.object)
+      for (const m of [...segs, ...balls, head, ...hands, ...shoes]) m.visible = false
+    }).catch(() => {})
     const sac = anim.sac ? shadowed(new THREE.Mesh(new THREE.BoxGeometry(16, 19, 11), new THREE.MeshStandardMaterial({ color: '#3f526e', roughness: 0.8 }))) : undefined
     const bandMat = new THREE.MeshStandardMaterial({ color: BAND_COLORS[band ?? 'M'], roughness: 0.5, emissive: BAND_COLORS[band ?? 'M'], emissiveIntensity: 0.15 })
     const bands = (anim.bands ?? []).map(() => shadowed(new THREE.Mesh(cyl, bandMat)))
@@ -299,7 +313,7 @@ export default function Figure3D({ anim: id, band, className }: Props) {
       camera.position.set(center.x + Math.sin(a) * Math.cos(e) * dist, center.y + Math.sin(e) * dist, center.z + Math.cos(a) * Math.cos(e) * dist)
       controls.update()
     }
-    const def = anim.cam ?? (anim.view === 'front' ? { az: 70, el: 12 } : { az: 35, el: 14 })
+    const def = cam ?? anim.cam ?? (anim.view === 'front' ? { az: 70, el: 12 } : { az: 35, el: 14 })
     setCam(def.az, def.el)
     api.current = {
       setView: (p) => {
@@ -325,18 +339,20 @@ export default function Figure3D({ anim: id, band, className }: Props) {
     const frame = (now: number) => {
       raf = requestAnimationFrame(frame)
       if (document.hidden) return
-      const j = skeleton3d(anim, poseAt(anim, (now - start) / 1000))
+      const j = skeleton3d(anim, poseAt(anim, at ?? (now - start) / 1000))
       SEGS.forEach((s, i) => placeCylinder(segs[i], j[s.a] as V3, j[s.b] as V3))
       BALLS.forEach((b, i) => balls[i].position.set(...(j[b.j] as V3)))
       const upv = norm3(sub3(j.head, j.neck))
       orient(head, j.face, upv)
       head.position.set(...j.head)
+      const flat: [boolean, boolean] = [false, false]
       ;(['N', 'F'] as const).forEach((side, i) => {
         // Main : dans le prolongement de l'avant-bras, ou à plat (doigts vers l'avant) quand elle est en appui.
         const hand = j[`hand${side}`]
         let d = norm3(sub3(hand, j[`elbow${side}`]))
         const onSupport = d[1] < -0.4 && (hand[1] < 5 || beds.some((b) => Math.abs(hand[1] - b.y) < 6 && hand[0] >= b.x0 && hand[0] <= b.x1))
         if (onSupport) d = [1, 0, 0]
+        flat[i] = onSupport
         hands[i].position.set(...add3(hand, mul3(d, 3.2)))
         hands[i].quaternion.setFromUnitVectors(UP, tmpA.set(...d))
         if (onSupport) hands[i].scale.set(1.9, 4.4, 3.2)
@@ -349,6 +365,7 @@ export default function Figure3D({ anim: id, band, className }: Props) {
         shoes[i].position.set(...add3(add3(ankle, mul3(fd, 3.8)), mul3(shin, 0.6)))
         shoes[i].scale.set(7.6, 2.9, 3.6)
       })
+      athlete?.pose(j, { handFlat: flat, grip })
       if (sac && anim.sac) {
         const c = resolve3(anim.sac, j, cx)
         sac.position.set(...c)
@@ -367,7 +384,10 @@ export default function Figure3D({ anim: id, band, className }: Props) {
     raf = requestAnimationFrame(frame)
 
     return () => {
+      disposed = true
       cancelAnimationFrame(raf)
+      // Le personnage partage géométries et textures avec le modèle en cache : on ne les libère pas.
+      if (athlete) scene.remove(athlete.object)
       ro.disconnect()
       controls.dispose()
       scene.traverse((o) => {
@@ -379,7 +399,7 @@ export default function Figure3D({ anim: id, band, className }: Props) {
       renderer.dispose()
       renderer.domElement.remove()
     }
-  }, [id, band])
+  }, [id, band, at, cam?.az, cam?.el])
 
   if (failed) return null
   return (
