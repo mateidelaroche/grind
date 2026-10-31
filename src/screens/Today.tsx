@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { COACH_LINES, pick } from '../data/coach'
 import { SESSIONS } from '../data/sessions'
-import { GearChips, Sheet, Stepper, toast } from '../components/ui'
+import { GearLine, Sheet, Stepper, toast } from '../components/ui'
 import {
   addDays, DAY_LONG, DAY_SHORT, dayPlan, diffDays, formatDate, legWarning, mondayOf, phaseOf, PROGRAM_WEEKS,
   isRunDay, nextRunDay, runStartOf, sessionGear, today, weekday, weekNumber,
@@ -131,10 +131,10 @@ export default function Today({ onStart, onOpenSession, onFood, onPhotos, onRun,
               <div className="badge ok" style={{ height: 32, alignSelf: 'flex-start' }}>✅ Séance faite aujourd’hui</div>
             ) : (
               <>
-                <GearChips gear={sessionGear(plan.session, opts)} />
+                <GearLine gear={sessionGear(plan.session, opts)} />
                 <button className="btn primary big block" onClick={() => onStart(plan.session, false)}>Démarrer</button>
                 <div className="row">
-                  <button className="btn grow" onClick={() => onStart(plan.session, true)}>⚡ Express 25 min</button>
+                  <button className="btn grow" onClick={() => onStart(plan.session, true)}>⚡ Express 25′</button>
                   <button className="btn grow" onClick={() => setMoving(true)}>📅 Déplacer</button>
                 </div>
               </>

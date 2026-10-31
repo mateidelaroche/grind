@@ -3,7 +3,7 @@ import Figure from '../anim/Figure'
 import { EXERCISES } from '../data/exercises'
 import { FREE_STEPS, INDOOR_STEPS, RUN_PLAN, runMinutes, runSteps, STEP_LABEL } from '../data/running'
 import { IconBack } from '../components/icons'
-import { fmtTime } from '../components/ui'
+import { fmtTime, Sheet } from '../components/ui'
 import { beep, keepAwake, say, unlockAudio } from '../lib/audio'
 import { fmtDur, fmtKm, fmtMin, fmtPace, simplify, tracker, watchGps } from '../lib/gps'
 import { useStore, type ActiveRun } from '../store'
@@ -286,17 +286,15 @@ export function RunScreen({ onFinished }: { onFinished: (id: string | undefined)
       </div>
 
       {confirmEnd && (
-        <div className="sheet-bg" onClick={() => setConfirmEnd(false)}>
-          <div className="sheet" onClick={(e) => e.stopPropagation()}>
-            <div className="ex-name">Terminer la sortie ?</div>
-            {a.steps.slice(a.step).some((s) => isEffort(s.kind)) && a.plan >= 0 && (
-              <div className="small muted">Il reste des fractions : la sortie ne sera pas validée et tu la referas la prochaine fois. C’est la bonne décision si ton genou tire.</div>
-            )}
-            <button className="btn primary block" onClick={() => finish()}>Terminer et enregistrer</button>
-            <button className="btn danger block" onClick={() => { if (confirm('Supprimer cette sortie sans l’enregistrer ?')) { if (!a.indoor) tracker.end(); void keepAwake(false); useStore.getState().abandonRun(); onFinished(undefined) } }}>Annuler sans enregistrer</button>
-            <button className="btn block" onClick={() => setConfirmEnd(false)}>Continuer</button>
-          </div>
-        </div>
+        <Sheet onClose={() => setConfirmEnd(false)}>
+          <div className="ex-name">Terminer la sortie ?</div>
+          {a.steps.slice(a.step).some((s) => isEffort(s.kind)) && a.plan >= 0 && (
+            <div className="small muted">Il reste des fractions : la sortie ne sera pas validée et tu la referas la prochaine fois. C’est la bonne décision si ton genou tire.</div>
+          )}
+          <button className="btn primary block" onClick={() => finish()}>Terminer et enregistrer</button>
+          <button className="btn danger block" onClick={() => { if (confirm('Supprimer cette sortie sans l’enregistrer ?')) { if (!a.indoor) tracker.end(); void keepAwake(false); useStore.getState().abandonRun(); onFinished(undefined) } }}>Annuler sans enregistrer</button>
+          <button className="btn block" onClick={() => setConfirmEnd(false)}>Continuer</button>
+        </Sheet>
       )}
     </div>
   )

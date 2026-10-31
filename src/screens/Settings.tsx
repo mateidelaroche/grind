@@ -34,8 +34,11 @@ export default function Settings() {
 
       <div className="section-title">Pendant la séance</div>
       <div className="card" style={{ padding: '4px 16px', gap: 0 }}>
-        <SettingRow title="Vue par défaut" desc={s.settings.view === 'guided' ? 'Guidée : un exercice à la fois' : 'Liste : tous les exercices'}>
-          <button className="btn sm" onClick={() => set({ view: s.settings.view === 'guided' ? 'list' : 'guided' })}>{s.settings.view === 'guided' ? 'Guidée' : 'Liste'}</button>
+        <SettingRow title="Vue par défaut" desc={s.settings.view === 'guided' ? 'Un exercice à la fois' : 'Tous les exercices sur une page'}>
+          <div className="seg" style={{ width: 168 }}>
+            <button className={s.settings.view === 'guided' ? 'on' : ''} onClick={() => set({ view: 'guided' })}>Guidée</button>
+            <button className={s.settings.view === 'list' ? 'on' : ''} onClick={() => set({ view: 'list' })}>Liste</button>
+          </div>
         </SettingRow>
         <SettingRow title="Animations 3D" desc="Mannequin à faire tourner avec le doigt (sinon silhouette 2D)">
           <Toggle on={s.settings.anim3d} onChange={(v) => set({ anim3d: v })} />

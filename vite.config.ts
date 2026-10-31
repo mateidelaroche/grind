@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import pkg from './package.json' with { type: 'json' }
 
 // Servi sur https://mateidelaroche.github.io/grind/
 const base = process.env.GRIND_BASE ?? '/grind/'
@@ -8,7 +9,7 @@ const base = process.env.GRIND_BASE ?? '/grind/'
 export default defineConfig({
   base,
   define: {
-    __APP_VERSION__: JSON.stringify(`1.0 · ${new Date().toISOString().slice(0, 10)}`),
+    __APP_VERSION__: JSON.stringify(`${pkg.version} · ${new Date().toISOString().slice(0, 10)}`),
   },
   plugins: [
     react(),

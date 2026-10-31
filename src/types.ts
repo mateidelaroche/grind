@@ -83,6 +83,8 @@ export interface SetRecord {
   flags: ('hard' | 'easy')[]
   /** Exercices en temps : plus longue durée tenue jusqu'au bout (s). */
   best?: number
+  /** Reps faites à chaque série validée, dans l'ordre. */
+  reps?: number[]
 }
 
 export type MeasureKey = 'brasD' | 'brasG' | 'poitrine' | 'taille' | 'cuisseD' | 'cuisseG'

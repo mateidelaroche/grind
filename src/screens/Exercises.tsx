@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import Demo from '../anim/Demo'
 import Figure from '../anim/Figure'
 import { EXERCISES } from '../data/exercises'
@@ -21,13 +22,29 @@ const CATS: [string, string[]][] = [
   ['Étirements', ['st-pecs', 'st-child', 'st-quad', 'st-hams', 'st-hip']],
 ]
 
+/** Minuscules sans accents, pour chercher « elevation » ou « épaule » indifféremment. */
+const fold = (x: string) => x.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+
 export function ExercisesList({ onOpen }: { onOpen: (id: string) => void }) {
   const levels = useStore((s) => s.levels)
   const mastered = useStore((s) => s.mastered)
+  const [q, setQ] = useState('')
+  const words = fold(q).split(/\s+/).filter(Boolean)
+  const match = (id: string) => {
+    const ex = EXERCISES[id]
+    const text = fold(`${ex.name} ${ex.muscles} ${(ex.levels ?? []).map((l) => l.label).join(' ')}`)
+    return words.every((w) => text.includes(w))
+  }
+  const cats = CATS.map(([cat, ids]) => [cat, ids.filter(match)] as const).filter(([, ids]) => ids.length > 0)
   return (
     <div className="page">
       <div className="page-title">Exercices</div>
-      {CATS.map(([cat, ids]) => (
+      <div className="search">
+        <input className="input" type="search" placeholder="Chercher : pompes, épaules, élastique…" value={q} onChange={(e) => setQ(e.target.value)} enterKeyHint="search" />
+        {q && <button className="search-clear" aria-label="Effacer" onClick={() => setQ('')}>×</button>}
+      </div>
+      {cats.length === 0 && <div className="muted center" style={{ padding: 24 }}>Aucun exercice pour « {q} ».</div>}
+      {cats.map(([cat, ids]) => (
         <div key={cat} className="stack" style={{ gap: 8 }}>
           <div className="section-title">{cat}</div>
           <div className="card" style={{ padding: '4px 14px', gap: 0 }}>

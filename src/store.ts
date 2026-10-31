@@ -102,7 +102,7 @@ interface State extends SyncedData {
   startWorkout: (session: SessionId, express: boolean, date: string) => void
   setStep: (i: number) => void
   markStep: (key: string, done: boolean) => void
-  recordSet: (recKey: string, rec: Omit<SetRecord, 'done' | 'flags'>, delta: number) => void
+  recordSet: (recKey: string, rec: Omit<SetRecord, 'done' | 'flags' | 'reps'>, delta: number, reps?: number) => void
   flagSet: (recKey: string, flag: 'hard' | 'easy') => void
   finishWorkout: () => string | undefined
   abandonWorkout: () => void
@@ -213,11 +213,13 @@ export const useStore = create<State>()(
           else delete d[key]
           return { active: { ...s.active, done: d } }
         }),
-        recordSet: (recKey, rec, delta) => updWorkout((w) => {
+        recordSet: (recKey, rec, delta, n) => updWorkout((w) => {
           const prev = w.sets[recKey]
           const done = Math.max(0, Math.min(rec.total, (prev?.done ?? 0) + delta))
           const best = Math.max(prev?.best ?? 0, rec.best ?? 0) || undefined
-          return { ...w, sets: { ...w.sets, [recKey]: { ...rec, done, best, flags: prev?.flags ?? [] } } }
+          const old = prev?.reps ?? []
+          const reps = delta > 0 ? (n !== undefined ? [...old, n] : old) : old.slice(0, Math.max(0, old.length + delta))
+          return { ...w, sets: { ...w.sets, [recKey]: { ...rec, done, best, reps: reps.length ? reps : undefined, flags: prev?.flags ?? [] } } }
         }),
         flagSet: (recKey, flag) => updWorkout((w) => {
           const prev = w.sets[recKey]

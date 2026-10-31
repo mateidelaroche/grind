@@ -224,7 +224,7 @@ export function Recap({ id, onBack, fresh }: { id: string; onBack: () => void; f
           <div key={k} className="list-row small">
             <div className="grow">
               <div style={{ fontWeight: 600 }}>{EXERCISES[r.ex].name}</div>
-              <div className="muted">{levelOf(r.ex, r.level)?.label ?? ''}{r.flags.length ? ` · ${r.flags.map((f) => (f === 'hard' ? '😮‍💨 dur' : '😎 facile')).join(' ')}` : ''}</div>
+              <div className="muted">{levelOf(r.ex, r.level)?.label ?? ''}{r.reps?.length ? ` · ${r.reps.join(' · ')} reps` : ''}{r.flags.length ? ` · ${r.flags.map((f) => (f === 'hard' ? '😮‍💨 dur' : '😎 facile')).join(' ')}` : ''}</div>
             </div>
             <span style={{ fontWeight: 700, color: r.done >= r.total ? 'var(--ok)' : 'var(--text-2)' }}>{r.done}/{r.total}</span>
           </div>
