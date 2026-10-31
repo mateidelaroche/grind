@@ -14,7 +14,7 @@ function Gallery() {
       {ids.flatMap((id) =>
         ANIMS[id].keys.map((_, k) => (
           <div className="cell" key={id + k}>
-            <Figure anim={id} keyIndex={k} playing={false} band="F" />
+            <Figure anim={id} keyIndex={k} playing={false} band="F" marks />
             {id} · {k}
           </div>
         )),

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ANIMS } from './anims'
-import { add, along, dir, FLOOR, mul, poseAt, resolveTarget, skeleton, sub, viewBox, type AnimDef, type Skeleton, type V } from './rig'
+import { add, along, dir, FLOOR, fmtCm, mul, poseAt, resolveTarget, skeleton, sub, viewBox, type AnimDef, type Mark, type Skeleton, type V } from './rig'
 import type { Band } from '../types'
 
 export const BAND_COLORS: Record<Band, string> = { L: '#3b82f6', M: '#facc15', F: '#f97316' }
@@ -159,16 +159,61 @@ function Scene({ anim, vb }: { anim: AnimDef; vb: number[] }) {
   )
 }
 
+/** Étiquette de mesure (pastille sombre, lisible sur la scène). */
+function Tag({ x, y, text }: { x: number; y: number; text: string }) {
+  const w = text.length * 3.3 + 6
+  return (
+    <g>
+      <rect x={x - w / 2} y={y - 5} width={w} height={10} rx={3} fill="var(--mark-bg)" stroke="var(--mark)" strokeWidth={0.6} />
+      <text x={x} y={y + 2.4} textAnchor="middle" fontSize={6.6} fontWeight={700} fill="var(--mark)">{text}</text>
+    </g>
+  )
+}
+
+/** Repères chiffrés : hauteur d'ancrage, distance au sol (en cm pour un personnage de 1 m 88). */
+/** tags : seulement les étiquettes (dessinées par-dessus le personnage), sinon seulement les traits. */
+function Marks({ marks, tags }: { marks: Mark[]; tags?: boolean }) {
+  return (
+    <g>
+      {marks.map((m, i) => {
+        const label = (v: number) => `${fmtCm(v)}${m.note ? ` · ${m.note}` : ''}`
+        if ('h' in m) {
+          const [x, y] = m.h
+          if (tags) return <Tag key={i} x={x} y={y - 8} text={label(FLOOR - y)} />
+          return (
+            <g key={i}>
+              <line x1={x} x2={x} y1={FLOOR} y2={y} stroke="var(--mark)" strokeWidth={0.8} strokeDasharray="2.5 2" />
+              <line x1={x - 3} x2={x + 3} y1={y} y2={y} stroke="var(--mark)" strokeWidth={0.8} />
+            </g>
+          )
+        }
+        const [a, b] = m.d
+        const y = FLOOR - 3
+        if (tags) return <Tag key={i} x={(a + b) / 2} y={y - 7} text={label(Math.abs(b - a))} />
+        return (
+          <g key={i}>
+            <line x1={a} x2={b} y1={y} y2={y} stroke="var(--mark)" strokeWidth={0.8} strokeDasharray="2.5 2" />
+            <line x1={a} x2={a} y1={y - 2.5} y2={y + 2.5} stroke="var(--mark)" strokeWidth={0.8} />
+            <line x1={b} x2={b} y1={y - 2.5} y2={y + 2.5} stroke="var(--mark)" strokeWidth={0.8} />
+          </g>
+        )
+      })}
+    </g>
+  )
+}
+
 interface Props {
   anim: string
   band?: Band
   playing?: boolean
   /** Affiche une pose clé fixe (aperçus). */
   keyIndex?: number
+  /** Repères de mesure (par défaut : seulement sur l'animation qui joue, pas sur les vignettes). */
+  marks?: boolean
   className?: string
 }
 
-export default function Figure({ anim: id, band, playing = true, keyIndex, className }: Props) {
+export default function Figure({ anim: id, band, playing = true, keyIndex, className, marks }: Props) {
   const anim = ANIMS[id]
   const [time, setTime] = useState(0)
   const raf = useRef(0)
@@ -194,11 +239,13 @@ export default function Figure({ anim: id, band, playing = true, keyIndex, class
   const near = 'var(--fig)'
   const far = front ? 'var(--fig)' : 'var(--fig-far)'
   const bandColor = BAND_COLORS[band ?? 'M']
+  const showMarks = !!anim.marks && (marks ?? (playing && keyIndex === undefined))
 
   return (
     <svg className={className} viewBox={vb.join(' ')} role="img" aria-label="Démonstration du mouvement">
       {!anim.noFloor && <line x1={vb[0]} x2={vb[0] + vb[2]} y1={FLOOR} y2={FLOOR} stroke="var(--floor)" strokeWidth={2} />}
       <Scene anim={anim} vb={vb} />
+      {showMarks && <Marks marks={anim.marks!} />}
       <Leg sk={sk} side="F" color={far} />
       <Arm sk={sk} side="F" color={far} anim={anim} />
       <Torso sk={sk} color={near} />
@@ -210,15 +257,16 @@ export default function Figure({ anim: id, band, playing = true, keyIndex, class
       <Leg sk={sk} side="N" color={near} />
       <Arm sk={sk} side="N" color={near} anim={anim} />
       {(anim.bands ?? []).map((b, i) => {
-        const p = resolveTarget(b.from, sk)
-        const q = resolveTarget(b.to, sk)
+        const pts = [b.from, ...(b.via ?? []), b.to].map((t) => resolveTarget(t, sk))
+        const p = pts[0]
         return (
           <g key={i}>
-            <line x1={p[0]} y1={p[1]} x2={q[0]} y2={q[1]} stroke={bandColor} strokeWidth={3} strokeLinecap="round" />
+            <polyline points={pts.map(pt).join(' ')} fill="none" stroke={bandColor} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
             {Array.isArray(b.from) && <circle cx={p[0]} cy={p[1]} r={3} fill="var(--anchor)" />}
           </g>
         )
       })}
+      {showMarks && <Marks marks={anim.marks!} tags />}
     </svg>
   )
 }

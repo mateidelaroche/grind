@@ -266,7 +266,7 @@ function WorkStep({ st, active, done, nav, superset, onValidate, onUnvalidate }:
         {superset && <div className="small" style={{ color: 'var(--warn)' }}>⚡ Enchaîne <b>sans repos</b> avec {superset}</div>}
       </div>
 
-      <div className="wk-fig"><Demo anim={animOf(st.ex!, level)} band={lvl?.band} /></div>
+      <div className="wk-fig"><Demo anim={animOf(st.ex!, level)} band={lvl?.band} tempo={st.item?.tempo} /></div>
 
       <div className="row wrap" style={{ gap: 8 }}>
         <button className="btn sm" onClick={() => setInfo(true)}><IconInfo /> Consignes</button>

@@ -94,6 +94,11 @@ export function programLevel(exId: string) {
 }
 
 export const levelOf = (exId: string, lvl: number): Level | undefined => EXERCISES[exId].levels?.[lvl]
+/** Tempo prescrit pour un exercice dans sa séance principale (ex. « 3-1-1 »). */
+export function tempoOf(exId: string): string | undefined {
+  for (const ses of Object.values(SESSIONS)) for (const b of ses.blocks) for (const it of b.items) if (it.ex === exId && it.tempo) return it.tempo
+}
+
 export const animOf = (exId: string, lvl: number) => {
   const level = levelOf(exId, lvl)
   return gearAnim(level?.anim ?? EXERCISES[exId].anim, exId, level)

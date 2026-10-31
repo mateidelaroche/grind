@@ -1,4 +1,4 @@
-import { along, FLOOR, L, solve2, type AnimDef, type BandDef, type Limb, type Pose, type Target, type V } from './rig'
+import { along, applyTempo, FLOOR, L, solve2, type AnimDef, type BandDef, type Limb, type Pose, type Target, type V } from './rig'
 
 // Repères : sol y=150, cheville au sol y≈148, debout bassin y=74.
 const FL = FLOOR - 2
@@ -30,11 +30,13 @@ function pushupPose(ankle: V, shoulderY: number, handX: number, handY = FL, extr
 
 // ───────────── POUSSÉE ─────────────
 const pushup: AnimDef = {
+  ecc: 0,
   keys: [pushupPose([40, 145], 97, 152), pushupPose([40, 145], 133, 152)],
   dur: [1.8, 0.9], hold: [0.4, 0.5],
 }
 
 const pushupDiamond: AnimDef = {
+  ecc: 0,
   mod: 'diamond',
   cam: { az: 60, el: 25 },
   keys: [pushupPose([40, 145], 97, 146), pushupPose([40, 145], 133, 146)],
@@ -43,6 +45,7 @@ const pushupDiamond: AnimDef = {
 
 const bedTop = FLOOR - 36
 const pushupDecline: AnimDef = {
+  ecc: 0,
   scene: [{ k: 'bed', x: -10, w: 66 }],
   keys: [pushupPose([48, bedTop - 3], 96, 158), pushupPose([48, bedTop - 3], 133, 158)].map((k) => ({ ...k, fN: 170, fF: 170 })),
   dur: [1.4, 0.8], hold: [0.4, 0.5],
@@ -55,9 +58,10 @@ function pikePose(shoulderUp: boolean): Pose {
   const t = (Math.atan2(S[1] - P[1], S[0] - P[0]) * 180) / Math.PI
   return { p: P, t, h: t + (shoulderUp ? 15 : 10), aN: { ik: H }, aF: { ik: [H[0] - 2, H[1]] }, lN: { ik: [58, 146] }, lF: { ik: [56, 146] }, fN: 110, fF: 110 }
 }
-const pike: AnimDef = { mod: 'pike', keys: [pikePose(true), pikePose(false)], dur: [1.3, 0.8], hold: [0.4, 0.4] }
+const pike: AnimDef = { ecc: 0, mod: 'pike', keys: [pikePose(true), pikePose(false)], dur: [1.3, 0.8], hold: [0.4, 0.4] }
 
 const dipsBed: AnimDef = {
+  ecc: 0,
   scene: [{ k: 'bed', x: 10, w: 74 }],
   keys: [
     { p: [96, 110], t: -95, aN: { ik: [84, bedTop + 1] }, aF: { ik: [82, bedTop + 1] }, lN: { ik: [150, FL] }, lF: { ik: [146, FL] } },
@@ -66,10 +70,12 @@ const dipsBed: AnimDef = {
   dur: [1.3, 0.8], hold: [0.4, 0.4],
 }
 
-const DOOR_ANCHOR_MID: V = [40, 52]
+const DOOR_ANCHOR_MID: V = [40, 44]
 const flyBand: AnimDef = {
+  ecc: 1,
   scene: [{ k: 'door', x: 36 }],
   bands: [{ from: DOOR_ANCHOR_MID, to: { j: 'handN' }, z: 34 }],
+  marks: [{ h: DOOR_ANCHOR_MID, note: 'poitrine', z: 34 }, { d: [36, 92], note: 'porte → talons' }],
   mod: 'fly',
   cam: { az: 25, el: 55 },
   keys: [
@@ -80,8 +86,12 @@ const flyBand: AnimDef = {
 }
 
 const latRaise: AnimDef = {
+  ecc: 1,
   view: 'front',
-  bands: [{ from: { j: 'ankleN' }, to: { j: 'handN' } }, { from: { j: 'ankleF' }, to: { j: 'handF' } }],
+  bands: [
+    { from: { j: 'ankleN', o: [0, 2] }, via: [{ j: 'kneeN', b: [0, -7] }], to: { j: 'handN' } },
+    { from: { j: 'ankleF', o: [0, 2] }, via: [{ j: 'kneeF', b: [0, -7] }], to: { j: 'handF' } },
+  ],
   keys: [
     stand(100, { aN: { a: [82, 86] }, aF: { a: [98, 94] }, lN: { ik: [104, FL] }, lF: { ik: [96, FL] } }),
     stand(100, { aN: { a: [-2, 10] }, aF: { a: [182, 170] }, lN: { ik: [104, FL] }, lF: { ik: [96, FL] } }),
@@ -90,7 +100,8 @@ const latRaise: AnimDef = {
 }
 
 const tricepsOh: AnimDef = {
-  bands: [{ from: { j: 'ankleF' }, to: { j: 'handN' } }],
+  ecc: 1,
+  bands: [{ from: { j: 'ankleF', o: [0, 2] }, to: { j: 'handN' } }],
   keys: [
     stand(100, { lN: { ik: [118, FL] }, lF: { ik: [74, FL] }, fF: 0, aN: { a: [-100, 125] }, aF: { a: [-102, 123] } }),
     stand(100, { lN: { ik: [118, FL] }, lF: { ik: [74, FL] }, fF: 0, aN: { a: [-98, -95] }, aF: { a: [-100, -97] } }),
@@ -101,8 +112,9 @@ const tricepsOh: AnimDef = {
 // ───────────── TIRAGE ─────────────
 const LOW_ANCHOR: V = [162, 146]
 const rowSeated: AnimDef = {
+  ecc: 1,
   scene: [{ k: 'bed', x: 160, w: 60 }],
-  bands: [{ from: LOW_ANCHOR, to: { j: 'handN' } }],
+  bands: [{ from: LOW_ANCHOR, to: { j: 'handN' } }, { from: LOW_ANCHOR, to: { j: 'handF' } }],
   keys: [
     { p: [70, 140], t: -88, aN: { a: [20, 18] }, aF: { a: [22, 20] }, lN: { a: [0, 0] }, lF: { a: [1, 1] }, fN: -80, fF: -80 },
     { p: [70, 140], t: -92, c: -3, aN: { a: [118, 5] }, aF: { a: [120, 7] }, lN: { a: [0, 0] }, lF: { a: [1, 1] }, fN: -80, fF: -80 },
@@ -111,6 +123,7 @@ const rowSeated: AnimDef = {
 }
 
 const rowBackpack: AnimDef = {
+  ecc: 1,
   // En 3D, le lit est du côté de l'appui : la jambe tendue reste au sol à côté.
   scene: [{ k: 'bed', x: 20, w: 150, z: -48 }],
   sac: { j: 'handN', o: [0, 8] },
@@ -126,8 +139,10 @@ const kneel = (o: Partial<Pose>): Pose => ({
   p: [100, FLOOR - 3 - L.th], t: -92, aN: HANG, aF: HANG, lN: { a: [90, 180] }, lF: { a: [91, 180] }, fN: 180, fF: 180, ...o,
 })
 const pulldownKneel: AnimDef = {
+  ecc: 1,
   scene: [{ k: 'door', x: 168 }],
-  bands: [{ from: HIGH_ANCHOR, to: { j: 'handN' } }],
+  bands: [{ from: HIGH_ANCHOR, to: { j: 'handN' } }, { from: HIGH_ANCHOR, to: { j: 'handF' } }],
+  marks: [{ h: HIGH_ANCHOR, note: 'haut de porte' }, { d: [100, 168], note: 'genoux → porte' }],
   keys: [
     kneel({ aN: { a: [-62, -62] }, aF: { a: [-64, -64] } }),
     kneel({ c: -4, aN: { a: [102, -72] }, aF: { a: [104, -70] } }),
@@ -136,8 +151,10 @@ const pulldownKneel: AnimDef = {
 }
 
 const pullover: AnimDef = {
+  ecc: 1,
   scene: [{ k: 'door', x: 178 }],
-  bands: [{ from: [178, 6], to: { j: 'handN' } }],
+  bands: [{ from: [178, 6], to: { j: 'handN' } }, { from: [178, 6], to: { j: 'handF' } }],
+  marks: [{ h: [178, 6], note: 'haut de porte' }, { d: [110, 178], note: 'pointes → porte' }],
   keys: [
     stand(96, { t: -78, aN: { a: [-35, -35] }, aF: { a: [-37, -37] } }),
     stand(96, { t: -78, aN: { a: [82, 82] }, aF: { a: [84, 84] } }),
@@ -146,8 +163,10 @@ const pullover: AnimDef = {
 }
 
 const facePull: AnimDef = {
+  ecc: 1,
   scene: [{ k: 'door', x: 178 }],
   bands: [{ from: [178, 16], to: { j: 'handN' } }, { from: [178, 16], to: { j: 'handF' } }],
+  marks: [{ h: [178, 16], note: 'front' }, { d: [114, 178], note: 'pointes → porte' }],
   mod: 'facePull',
   cam: { az: 55, el: 15 },
   keys: [
@@ -158,6 +177,7 @@ const facePull: AnimDef = {
 }
 
 const pullApart: AnimDef = {
+  ecc: 1,
   view: 'front',
   bands: [{ from: { j: 'handF' }, to: { j: 'handN' } }],
   keys: [
@@ -168,7 +188,11 @@ const pullApart: AnimDef = {
 }
 
 const curl: AnimDef = {
-  bands: [{ from: { j: 'ankleN', o: [3, 0] }, to: { j: 'handN' } }],
+  ecc: 1,
+  bands: [
+    { from: { j: 'ankleN', o: [3, 2] }, via: [{ j: 'kneeN', o: [7, 0] }], to: { j: 'handN' } },
+    { from: { j: 'ankleF', o: [3, 2] }, via: [{ j: 'kneeF', o: [7, 0] }], to: { j: 'handF' } },
+  ],
   keys: [
     stand(100, { aN: { a: [93, 88] }, aF: { a: [95, 90] } }),
     stand(100, { aN: { a: [97, -42] }, aF: { a: [99, -40] } }),
@@ -178,6 +202,7 @@ const curl: AnimDef = {
 
 // ───────────── JAMBES ─────────────
 const lunge: AnimDef = {
+  ecc: 0,
   keys: [
     stand(92, { lN: { ik: [112, FL] }, lF: { ik: [96, FL] } }),
     stand(90, { p: [88, 110], t: -84, lN: { ik: [114, FL] }, lF: { ik: [50, 146] }, fF: 115 }),
@@ -186,7 +211,9 @@ const lunge: AnimDef = {
 }
 
 const lungeBulgare: AnimDef = {
+  ecc: 0,
   scene: [{ k: 'bed', x: -14, w: 62 }],
+  marks: [{ d: [48, 110], note: 'lit → pied' }],
   keys: [
     { ...stand(96), p: [96, 77], t: -86, lN: { ik: [114, FL] }, lF: { ik: [44, bedTop - 3] }, fF: 175 },
     { ...stand(96), p: [94, 110], t: -80, lN: { ik: [116, FL] }, lF: { ik: [44, bedTop - 3] }, fF: 175 },
@@ -195,8 +222,10 @@ const lungeBulgare: AnimDef = {
 }
 
 const boxSquat: AnimDef = {
+  ecc: 0,
   scene: [{ k: 'bed', x: 10, w: 56 }],
-  sac: { j: 'chest', o: [10, 2] },
+  sac: { j: 'chest', b: [0, -11] },
+  marks: [{ h: [38, bedTop], note: 'lit', z: -30 }],
   keys: [
     stand(98, { aN: { ik: { j: 'chest', o: [16, 4] } }, aF: { ik: { j: 'chest', o: [16, 6] } } }),
     stand(98, { p: [70, 108], t: -58, aN: { ik: { j: 'chest', o: [14, 6] } }, aF: { ik: { j: 'chest', o: [14, 8] } }, lN: { ik: [101, FL] }, lF: { ik: [97, FL] } }),
@@ -205,7 +234,9 @@ const boxSquat: AnimDef = {
 }
 
 const calf: AnimDef = {
+  ecc: 1,
   scene: [{ k: 'books', x: 100, w: 22, h: 9 }, { k: 'wall', x: 150 }],
+  marks: [{ h: [122, FLOOR - 9], note: 'livres', z: -16 }],
   keys: [
     stand(100, { p: [100, 71], lN: { ik: [97, 145] }, fN: -20, lF: { a: [100, 160] }, aN: { ik: [148, 46] } }),
     stand(100, { p: [101, 57], lN: { ik: [102, 131] }, fN: 59, lF: { a: [100, 160] }, aN: { ik: [148, 40] } }),
@@ -214,8 +245,10 @@ const calf: AnimDef = {
 }
 
 const hipThrust: AnimDef = {
+  ecc: 1,
   scene: [{ k: 'bed', x: -10, w: 66 }],
-  sac: { j: 'hip', o: [0, -9] },
+  sac: { j: 'hip', b: [0, -10] },
+  marks: [{ h: [4, bedTop], note: 'lit', z: -30 }],
   keys: [
     { p: [95, 140], t: -141, h: -150, aN: { ik: { j: 'hip', o: [0, -6] } }, aF: { ik: { j: 'hip', o: [2, -6] } }, lN: { ik: [134, FL] }, lF: { ik: [131, FL] } },
     { p: [104, 104], t: 174, h: 165, aN: { ik: { j: 'hip', o: [0, -6] } }, aF: { ik: { j: 'hip', o: [2, -6] } }, lN: { ik: [134, FL] }, lF: { ik: [131, FL] } },
@@ -224,8 +257,10 @@ const hipThrust: AnimDef = {
 }
 
 const legCurl: AnimDef = {
+  ecc: 1,
   scene: [{ k: 'bed', x: -40, w: 50 }],
   bands: [{ from: [8, 146], to: { j: 'ankleN' } }],
+  marks: [{ d: [10, 38], note: 'lit → pieds' }],
   keys: [
     { p: [112, 145], t: 0, h: -12, aN: { a: [140, 0] }, aF: { a: [142, 2] }, lN: { a: [180, 180] }, lF: { a: [181, 181] }, fN: 95, fF: 95 },
     { p: [112, 145], t: 0, h: -12, aN: { a: [140, 0] }, aF: { a: [142, 2] }, lN: { a: [180, -75] }, lF: { a: [181, 181] }, fN: -165, fF: 95 },
@@ -234,7 +269,8 @@ const legCurl: AnimDef = {
 }
 
 const rdl: AnimDef = {
-  bands: [{ from: { j: 'ankleN', o: [3, 0] }, to: { j: 'handN' } }],
+  ecc: 0,
+  bands: [{ from: { j: 'ankleN', o: [4, 2] }, to: { j: 'handN' } }, { from: { j: 'ankleF', o: [4, 2] }, to: { j: 'handF' } }],
   keys: [
     stand(100, { aN: { a: [92, 92] }, aF: { a: [94, 94] } }),
     stand(100, { p: [86, 80], t: -14, h: 0, aN: { a: [90, 90] }, aF: { a: [91, 91] } }),
@@ -244,8 +280,10 @@ const rdl: AnimDef = {
 
 // ───────────── ABDOS ─────────────
 const crunchBand: AnimDef = {
+  ecc: 1,
   scene: [{ k: 'door', x: 168 }],
-  bands: [{ from: HIGH_ANCHOR, to: { j: 'handN' } }],
+  bands: [{ from: HIGH_ANCHOR, to: { j: 'handN' } }, { from: HIGH_ANCHOR, to: { j: 'handF' } }],
+  marks: [{ h: HIGH_ANCHOR, note: 'haut de porte' }],
   keys: [
     kneel({ aN: { ik: { j: 'head', o: [4, 4] } }, aF: { ik: { j: 'head', o: [5, 5] } } }),
     kneel({ t: 30, c: 9, h: 70, aN: { ik: { j: 'head', o: [2, -6] } }, aF: { ik: { j: 'head', o: [3, -5] } } }),
@@ -262,6 +300,7 @@ const plank: AnimDef = { keys: [plankPose(0), plankPose(1.5)], dur: [1.8, 1.8], 
 
 const backLying = (o: Partial<Pose>): Pose => ({ p: [112, 145], t: 180, h: 182, aN: { a: [0, 0] }, aF: { a: [1, 1] }, lN: { a: [0, 0] }, lF: { a: [1, 1] }, ...o })
 const legRaise: AnimDef = {
+  ecc: 1,
   keys: [
     backLying({ aN: { ik: [108, 147] }, aF: { ik: [110, 147] }, lN: { a: [-8, -8] }, lF: { a: [-9, -9] }, fN: -70, fF: -70 }),
     backLying({ p: [112, 143], aN: { ik: [108, 147] }, aF: { ik: [110, 147] }, lN: { a: [-92, -92] }, lF: { a: [-93, -93] }, fN: 0, fF: 0 }),
@@ -346,7 +385,8 @@ const clamshell: AnimDef = { view: 'front', keys: [clamshellPose(false), clamshe
 
 const tke: AnimDef = {
   scene: [{ k: 'bed', x: 160, w: 60 }],
-  bands: [{ from: LOW_ANCHOR, to: { j: 'kneeN', o: [-3, 0] } }],
+  bands: [{ from: LOW_ANCHOR, to: { j: 'kneeN', o: [-4, 0] } }],
+  marks: [{ d: [102, 160], note: 'talon → lit' }],
   keys: [
     stand(98, { p: [96, 78], lN: { ik: [102, FL] }, lF: { ik: [88, FL] } }),
     stand(98, { p: [99, 74], lN: { ik: [102, FL] }, lF: { ik: [88, FL] } }),
@@ -356,9 +396,10 @@ const tke: AnimDef = {
 
 const tibRaise: AnimDef = {
   scene: [{ k: 'wall', x: 58 }],
+  marks: [{ d: [58, 81], note: 'mur → talons' }],
   keys: [
-    { ...stand(90), p: [78, 76], t: -98, lN: { ik: [98, FL] }, lF: { ik: [96, FL] }, fN: 0, fF: 0 },
-    { ...stand(90), p: [78, 76], t: -98, lN: { ik: [98, FL] }, lF: { ik: [96, FL] }, fN: -35, fF: -35 },
+    { ...stand(90), p: [70, 77], t: -97, lN: { ik: [84, FL] }, lF: { ik: [82, FL] }, fN: 0, fF: 0 },
+    { ...stand(90), p: [70, 77], t: -97, lN: { ik: [84, FL] }, lF: { ik: [82, FL] }, fN: -35, fF: -35 },
   ],
   dur: [0.6, 0.8], hold: [0.2, 0.4],
 }
@@ -460,16 +501,21 @@ export const ANIMS: Record<string, AnimDef> = {
 const LEVEL_GEAR: Record<string, { sac?: Target; bands?: BandDef[] }> = {
   // Élastique en travers du haut du dos, tenu sous chaque main ; sac porté sur le dos
   pushup: {
-    sac: { j: 'chest', o: [-4, -10] },
-    bands: [{ from: { j: 'handN' }, to: { j: 'chest', o: [-5, -12] } }, { from: { j: 'handF' }, to: { j: 'chest', o: [-5, -12] } }],
+    sac: { j: 'chest', b: [0, 13] },
+    // Sous la main, le long de l'extérieur du bras, en travers du haut du dos (sous les omoplates), puis l'autre main.
+    bands: [{
+      from: { j: 'handN' },
+      via: [{ j: 'shoulderN', b: [-4, 7], z: 6 }, { j: 'chest', b: [-2, 9] }, { j: 'shoulderF', b: [-4, 7], z: -6 }],
+      to: { j: 'handF' },
+    }],
   },
-  'pushup-decline': { sac: { j: 'chest', o: [-4, -10] } },
+  'pushup-decline': { sac: { j: 'chest', b: [0, 13] } },
   'dips-bed': { sac: { j: 'kneeN', o: [-12, -6] } },
   hammer: { sac: { j: 'handN', o: [0, 9] } },
   rdl: { sac: { j: 'handN', o: [0, 9] } },
-  lunge: { sac: { j: 'chest', o: [-9, 0] } },
-  calf: { sac: { j: 'chest', o: [-9, 0] } },
-  plank: { sac: { j: 'pelvis', o: [6, -9] } },
+  lunge: { sac: { j: 'chest', b: [-2, 12] } },
+  calf: { sac: { j: 'chest', b: [-2, 12] } },
+  plank: { sac: { j: 'pelvis', b: [4, 11] } },
 }
 
 /** Animation qui montre exactement le matériel du niveau choisi (élastique, sac… ou rien). */
@@ -483,4 +529,13 @@ export function gearAnim(base: string, ex: string, level?: { band?: string; sac?
   const id = `${base}@${ex}:${bands ? 'b' : ''}${sac ? 's' : ''}`
   ANIMS[id] ??= { ...d, bands, sac }
   return id
+}
+
+/** Variante cadencée sur le tempo prescrit (même mouvement, mêmes durées que le métronome). */
+export function tempoAnim(id: string, tempo?: string): string {
+  const d = ANIMS[id]
+  if (!tempo || !d || d.ecc === undefined) return id
+  const tid = `${id}~${tempo}`
+  ANIMS[tid] ??= applyTempo(d, tempo)
+  return tid
 }

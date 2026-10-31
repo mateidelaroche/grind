@@ -3,7 +3,7 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { ANIMS } from './anims'
 import { BAND_COLORS } from './Figure'
-import { cycleLength, FLOOR, poseAt, type AnimDef, type Target } from './rig'
+import { cycleLength, FLOOR, fmtCm, poseAt, type AnimDef, type Target } from './rig'
 import { add3, mul3, norm3, skeleton3d, sub3, type Joints3, type V3 } from './skeleton3d'
 import type { Band } from '../types'
 
@@ -145,11 +145,83 @@ function orient(o: THREE.Object3D, fwd: V3, up: V3) {
   o.quaternion.setFromRotationMatrix(tmpM)
 }
 
-function resolve3(tg: Target, j: Joints3, cx: number, z = 0): V3 {
-  if (Array.isArray(tg)) return [tg[0] - cx, FLOOR - tg[1], z]
-  const base = j[tg.j]
-  const o = tg.o ?? [0, 0]
-  return [base[0] + o[0], base[1] - o[1], base[2]]
+/** Point 3D d'une cible : le plan de l'image est le plan de profil (ou de face pour les vues de face). */
+function resolve3(tg: Target, j: Joints3, cx: number, front: boolean, z = 0): V3 {
+  // Décalage du plan de l'image (repère SVG, y vers le bas) vers la 3D
+  const plane = (dx: number, dy: number): V3 => (front ? [0, -dy, dx] : [dx, -dy, 0])
+  if (Array.isArray(tg)) return add3(plane(tg[0] - cx, tg[1] - FLOOR), [0, 0, front ? 0 : z])
+  let p = add3(j[tg.j], plane(...(tg.o ?? [0, 0])))
+  if (tg.b) {
+    const up = norm3(sub3(j.neck, j.pelvis))
+    // Vers le dos : perpendiculaire au buste, à l'opposé du visage
+    const back: V3 = front ? [-1, 0, 0] : [-up[1], up[0], 0]
+    p = add3(add3(p, mul3(up, tg.b[0])), mul3(back, tg.b[1]))
+  }
+  return tg.z ? add3(p, [0, 0, tg.z]) : p
+}
+
+/** Étiquette 3D toujours lisible (dessinée par-dessus la scène). */
+function textSprite(text: string): THREE.Sprite {
+  const c = document.createElement('canvas')
+  const ctx = c.getContext('2d')!
+  ctx.font = '700 44px system-ui, sans-serif'
+  const w = Math.ceil(ctx.measureText(text).width) + 36
+  c.width = w
+  c.height = 64
+  ctx.font = '700 44px system-ui, sans-serif'
+  ctx.fillStyle = 'rgba(8, 47, 73, 0.9)'
+  ctx.strokeStyle = '#67e8f9'
+  ctx.lineWidth = 3
+  ctx.beginPath()
+  ctx.roundRect(2, 2, w - 4, 60, 14)
+  ctx.fill()
+  ctx.stroke()
+  ctx.fillStyle = '#67e8f9'
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText(text, w / 2, 34)
+  const tex = new THREE.CanvasTexture(c)
+  tex.colorSpace = THREE.SRGBColorSpace
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true }))
+  s.scale.set((w / 64) * 7, 7, 1)
+  s.renderOrder = 10
+  return s
+}
+
+/** Repères chiffrés en 3D : pointillés + étiquette. Renvoie les points à garder dans le cadre. */
+function buildMarks(anim: AnimDef, cx: number, scene: THREE.Scene): V3[] {
+  const keep: V3[] = []
+  const front = anim.view === 'front'
+  const mat = new THREE.LineDashedMaterial({ color: '#67e8f9', dashSize: 3, gapSize: 2, depthTest: false, transparent: true })
+  const line = (pts: V3[]) => {
+    const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts.map((p) => new THREE.Vector3(...p))), mat)
+    l.computeLineDistances()
+    l.renderOrder = 9
+    scene.add(l)
+  }
+  const at = (x: number, y: number, z: number): V3 => (front ? [0, y, x - cx] : [x - cx, y, z])
+  for (const m of anim.marks ?? []) {
+    const label = (v: number) => `${fmtCm(v)}${m.note ? ` · ${m.note}` : ''}`
+    if ('h' in m) {
+      const top = at(m.h[0], FLOOR - m.h[1], m.z ?? 0)
+      line([[top[0], 0.3, top[2]], top])
+      const s = textSprite(label(FLOOR - m.h[1]))
+      s.position.set(top[0], top[1] + 7, top[2])
+      scene.add(s)
+      keep.push([top[0], top[1] + 12, top[2]])
+    } else {
+      const z = m.z ?? 24
+      const a = at(m.d[0], 0.4, z), b = at(m.d[1], 0.4, z)
+      line([a, b])
+      line([[a[0], 0.4, a[2] - 3], [a[0], 0.4, a[2] + 3]])
+      line([[b[0], 0.4, b[2] - 3], [b[0], 0.4, b[2] + 3]])
+      const s = textSprite(label(Math.abs(m.d[1] - m.d[0])))
+      s.position.set((a[0] + b[0]) / 2, 8, (a[2] + b[2]) / 2)
+      scene.add(s)
+      keep.push(a, b)
+    }
+  }
+  return keep
 }
 
 function buildScene(anim: AnimDef, cx: number, scene: THREE.Scene) {
@@ -182,9 +254,10 @@ function buildScene(anim: AnimDef, cx: number, scene: THREE.Scene) {
 
 export type CamPreset = 'profil' | '3/4' | 'face' | 'dessus'
 
-interface Props { anim: string; band?: Band; className?: string }
+/** at : instant figé du cycle (s) et cam : vue imposée, pour les captures de la page de dev. */
+interface Props { anim: string; band?: Band; className?: string; at?: number; cam?: { az: number; el: number } }
 
-export default function Figure3D({ anim: id, band, className }: Props) {
+export default function Figure3D({ anim: id, band, className, at, cam }: Props) {
   const ref = useRef<HTMLDivElement>(null)
   const api = useRef<{ setView: (p: CamPreset) => void }>(undefined)
   const [failed, setFailed] = useState(false)
@@ -266,9 +339,12 @@ export default function Figure3D({ anim: id, band, className }: Props) {
     const shoes = (['N', 'F'] as const).map(() => shadowed(new THREE.Mesh(ball, mats.shoes)))
     const beds = (anim.scene ?? []).flatMap((s) => (s.k === 'bed' ? [{ y: s.h ?? 36, x0: s.x - cx, x1: s.x - cx + s.w }] : []))
     const cyl = new THREE.CylinderGeometry(1, 1, 1, 18)
-    const sac = anim.sac ? shadowed(new THREE.Mesh(new THREE.BoxGeometry(16, 19, 11), new THREE.MeshStandardMaterial({ color: '#3f526e', roughness: 0.8 }))) : undefined
+    const sac = anim.sac ? shadowed(new THREE.Mesh(new THREE.BoxGeometry(11, 19, 16), new THREE.MeshStandardMaterial({ color: '#3f526e', roughness: 0.8 }))) : undefined
     const bandMat = new THREE.MeshStandardMaterial({ color: BAND_COLORS[band ?? 'M'], roughness: 0.5, emissive: BAND_COLORS[band ?? 'M'], emissiveIntensity: 0.15 })
-    const bands = (anim.bands ?? []).map(() => shadowed(new THREE.Mesh(cyl, bandMat)))
+    // Un cylindre par tronçon d'élastique (entre deux points de passage)
+    const bands = (anim.bands ?? []).map((b) => Array.from({ length: (b.via?.length ?? 0) + 1 }, () => shadowed(new THREE.Mesh(cyl, bandMat))))
+    const joints = (anim.bands ?? []).map((b) => Array.from({ length: b.via?.length ?? 0 }, () => shadowed(new THREE.Mesh(ball, bandMat))))
+    const markPts = buildMarks(anim, cx, scene)
     const anchors = (anim.bands ?? []).filter((b) => Array.isArray(b.from)).map(() => {
       const m = new THREE.Mesh(ball, new THREE.MeshStandardMaterial({ color: '#94a3b8' }))
       m.scale.setScalar(2.6)
@@ -283,6 +359,7 @@ export default function Figure3D({ anim: id, band, className }: Props) {
       const j = skeleton3d(anim, poseAt(anim, (total * i) / 16))
       for (const [k, v] of Object.entries(j)) if (k !== 'face' && Array.isArray(v) && v.length === 3) bb.expandByPoint(tmpA.set(...(v as V3)))
     }
+    for (const p of markPts) bb.expandByPoint(tmpA.set(...p))
     const center = bb.getCenter(new THREE.Vector3())
     const size = bb.getSize(new THREE.Vector3()).length()
     const camera = new THREE.PerspectiveCamera(32, 4 / 3, 5, 2000)
@@ -299,7 +376,7 @@ export default function Figure3D({ anim: id, band, className }: Props) {
       camera.position.set(center.x + Math.sin(a) * Math.cos(e) * dist, center.y + Math.sin(e) * dist, center.z + Math.cos(a) * Math.cos(e) * dist)
       controls.update()
     }
-    const def = anim.cam ?? (anim.view === 'front' ? { az: 70, el: 12 } : { az: 35, el: 14 })
+    const def = cam ?? anim.cam ?? (anim.view === 'front' ? { az: 70, el: 12 } : { az: 35, el: 14 })
     setCam(def.az, def.el)
     api.current = {
       setView: (p) => {
@@ -325,7 +402,7 @@ export default function Figure3D({ anim: id, band, className }: Props) {
     const frame = (now: number) => {
       raf = requestAnimationFrame(frame)
       if (document.hidden) return
-      const j = skeleton3d(anim, poseAt(anim, (now - start) / 1000))
+      const j = skeleton3d(anim, poseAt(anim, at ?? (now - start) / 1000))
       SEGS.forEach((s, i) => placeCylinder(segs[i], j[s.a] as V3, j[s.b] as V3))
       BALLS.forEach((b, i) => balls[i].position.set(...(j[b.j] as V3)))
       const upv = norm3(sub3(j.head, j.neck))
@@ -349,17 +426,26 @@ export default function Figure3D({ anim: id, band, className }: Props) {
         shoes[i].position.set(...add3(add3(ankle, mul3(fd, 3.8)), mul3(shin, 0.6)))
         shoes[i].scale.set(7.6, 2.9, 3.6)
       })
+      const front = anim.view === 'front'
       if (sac && anim.sac) {
-        const c = resolve3(anim.sac, j, cx)
+        const c = resolve3(anim.sac, j, cx, front)
         sac.position.set(...c)
+        // Sac posé sur le corps (dos, poitrine, hanches) : il suit l'inclinaison du buste. Tenu en main : il pend.
+        const onBody = !Array.isArray(anim.sac) && !anim.sac.j.startsWith('hand')
+        if (onBody && !front) {
+          const up = norm3(sub3(j.neck, j.pelvis))
+          orient(sac, [up[1], -up[0], 0], up)
+        }
       }
       let ai = 0
       ;(anim.bands ?? []).forEach((b, i) => {
-        const p = resolve3(b.from, j, cx, b.z ?? 0)
-        const q = resolve3(b.to, j, cx)
-        placeCylinder(bands[i], p, q)
-        bands[i].scale.x = bands[i].scale.z = 1.5
-        if (Array.isArray(b.from)) anchors[ai++].position.set(...p)
+        const pts = [resolve3(b.from, j, cx, front, b.z ?? 0), ...(b.via ?? []).map((t) => resolve3(t, j, cx, front)), resolve3(b.to, j, cx, front)]
+        bands[i].forEach((m, k) => {
+          placeCylinder(m, pts[k], pts[k + 1])
+          m.scale.x = m.scale.z = 1.5
+        })
+        joints[i].forEach((m, k) => { m.position.set(...pts[k + 1]); m.scale.setScalar(1.5) })
+        if (Array.isArray(b.from)) anchors[ai++].position.set(...pts[0])
       })
       controls.update()
       renderer.render(scene, camera)
@@ -379,7 +465,7 @@ export default function Figure3D({ anim: id, band, className }: Props) {
       renderer.dispose()
       renderer.domElement.remove()
     }
-  }, [id, band])
+  }, [id, band, at, cam?.az, cam?.el])
 
   if (failed) return null
   return (

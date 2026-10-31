@@ -10,7 +10,12 @@ export type JointName =
   | 'elbowN' | 'elbowF' | 'handN' | 'handF'
   | 'kneeN' | 'kneeF' | 'ankleN' | 'ankleF' | 'toeN' | 'toeF'
 
-export type Target = V | { j: JointName; o?: V }
+/**
+ * Point fixe [x, y], ou point accroché à une articulation :
+ * o = décalage dans le plan de l'image, b = décalage lié au buste [le long du dos, vers le dos],
+ * z = décalage latéral en 3D (vers l'extérieur du côté proche si positif).
+ */
+export type Target = V | { j: JointName; o?: V; b?: V; z?: number }
 
 /** FK : angles absolus [segment 1, segment 2]. IK : cible de l'extrémité. s = raccourci (perspective). */
 export type Limb = { a: [number, number]; s?: number } | { ik: Target; bend?: 1 | -1; s?: number }
@@ -37,8 +42,11 @@ export type SceneItem =
   | { k: 'wall'; x: number }
   | { k: 'books'; x: number; w: number; h: number }
 
-/** z : profondeur 3D d'un point d'ancrage fixe. */
-export interface BandDef { from: Target; to: Target; z?: number }
+/** z : profondeur 3D d'un point d'ancrage fixe. via : points de passage (l'élastique contourne le corps). */
+export interface BandDef { from: Target; to: Target; via?: Target[]; z?: number }
+
+/** Repère de mesure : hauteur d'un point au-dessus du sol, ou distance au sol entre deux abscisses. */
+export type Mark = ({ h: V } | { d: [number, number] }) & { note?: string; /** profondeur 3D */ z?: number }
 
 export interface AnimDef {
   view?: 'side' | 'front'
@@ -48,12 +56,31 @@ export interface AnimDef {
   hold?: number[]
   scene?: SceneItem[]
   bands?: BandDef[]
+  marks?: Mark[]
   sac?: Target
   noFloor?: boolean
   /** Vue 3D par défaut : azimut (0 = profil, 90 = face) et élévation, en degrés. */
   cam?: { az: number; el: number }
   /** Retouche 3D nommée (mouvements hors du plan), voir skeleton3d.ts. */
   mod?: string
+  /** Pose clé où commence la phase de freinage (excentrique) : la transition ecc → suivante. */
+  ecc?: 0 | 1
+}
+
+/**
+ * Cadence imposée par un tempo « freinage-pause-poussée » (ex. 3-1-1), dans l'ordre du métronome :
+ * freinage, pause en fin de freinage, poussée, puis on enchaîne.
+ */
+export function applyTempo(anim: AnimDef, tempo: string): AnimDef {
+  const [e, p, c] = tempo.split('-').map(Number)
+  if (anim.ecc === undefined || anim.keys.length !== 2 || [e, p, c].some((n) => Number.isNaN(n))) return anim
+  const i = anim.ecc, k = 1 - i
+  const dur = [0, 0], hold = [0, 0]
+  dur[i] = Math.max(0.4, e)
+  dur[k] = Math.max(0.4, c)
+  hold[k] = Math.max(0.12, p)
+  hold[i] = 0.12
+  return { ...anim, dur, hold }
 }
 
 export const FLOOR = 150
@@ -89,7 +116,17 @@ function resolve(tg: Target, sk: Partial<Skeleton>): V {
   if (Array.isArray(tg)) return tg
   const base = sk[tg.j] as V | undefined
   if (!base) return [0, 0]
-  return tg.o ? add(base, tg.o) : base
+  let p = tg.o ? add(base, tg.o) : base
+  // Le dos est du côté t − 90° (le personnage regarde vers la droite).
+  if (tg.b) p = add(add(p, mul(dir(sk.t ?? -90), tg.b[0])), sk.view === 'front' ? [0, 0] : mul(dir((sk.t ?? -90) - 90), tg.b[1]))
+  return p
+}
+
+/** Hauteur réelle (cm) d'une longueur du squelette : le personnage debout mesure 1 m 88. */
+export const CM_PER_UNIT = 188 / 143.2
+export function fmtCm(units: number): string {
+  const cm = Math.round((units * CM_PER_UNIT) / 5) * 5
+  return cm < 100 ? `${cm} cm` : `${(cm / 100).toFixed(2).replace('.', ',')} m`
 }
 
 function limb(root: V, lb: Limb, l1: number, l2: number, defBend: 1 | -1, sk: Partial<Skeleton>): [V, V] {
@@ -206,6 +243,12 @@ export function viewBox(anim: AnimDef): [number, number, number, number] {
   for (const s of anim.scene ?? []) {
     if (s.k === 'bed' || s.k === 'books') { eat([s.x, FLOOR - (s.k === 'bed' ? s.h ?? 36 : s.h)], 2); eat([s.x + s.w, FLOOR], 2) }
     else eat([s.x, FLOOR], 4)
+  }
+  // Repères : l'étiquette (≈ 3,3 unités par caractère) doit tenir dans le cadre.
+  for (const m of anim.marks ?? []) {
+    const half = ((m.note?.length ?? 0) + 10) * 1.7
+    if ('h' in m) { eat([m.h[0] - half, m.h[1] - 14], 0); eat([m.h[0] + half, m.h[1] - 14], 0) }
+    else { const c = (m.d[0] + m.d[1]) / 2; eat([c - half, FLOOR], 0); eat([c + half, FLOOR], 0) }
   }
   const pad = 10
   x0 -= pad; x1 += pad; y0 -= pad

@@ -24,6 +24,8 @@
   --sac: #334155;
   --sac-hi: #64748b;
   --anchor: #94a3b8;
+  --mark: #67e8f9;
+  --mark-bg: rgba(8, 47, 73, 0.85);
 
   --r: 16px;
   --safe-b: env(safe-area-inset-bottom, 0px);
