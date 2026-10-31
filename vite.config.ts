@@ -20,7 +20,7 @@ export default defineConfig({
       registerType: 'autoUpdate',
       injectRegister: false,
       injectManifest: {
-        globPatterns: ['**/*.{js,css,html,svg,png,webmanifest,glb}'],
+        globPatterns: ['**/*.{js,css,html,svg,png,webmanifest}'],
       },
       manifest: {
         name: 'Grind',
