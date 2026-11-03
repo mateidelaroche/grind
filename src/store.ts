@@ -107,6 +107,10 @@ interface State extends SyncedData {
   finishWorkout: () => string | undefined
   abandonWorkout: () => void
   deleteWorkout: (id: string) => void
+  /** Séance rattrapée depuis le calendrier (déjà terminée). */
+  logWorkout: (w: Omit<Workout, 'id'>) => string
+  /** Sortie course rattrapée depuis le calendrier. */
+  addRun: (r: Omit<RunLog, 'id'>) => string
 
   setSync: (s: Partial<SyncState>) => void
   setPush: (p: PushSubscriptionJSON | undefined) => void
@@ -129,7 +133,7 @@ export const useStore = create<State>()(
         startDate: DEFAULT_START,
         levels: {}, mastered: {}, timeTargets: {}, edits: {}, overrides: {},
         workouts: [], basket: {},
-        weights: {}, measures: {}, goalWeight: 75, tests: {}, levelLog: [], food: {}, runs: [],
+        weights: {}, measures: {}, goalWeight: 80, tests: {}, levelLog: [], food: {}, runs: [],
         settings: DEFAULT_SETTINGS,
         updatedAt: 0,
         sync: { status: 'off' },
@@ -247,6 +251,16 @@ export const useStore = create<State>()(
           }))
         },
         deleteWorkout: (id) => upd((s) => ({ workouts: s.workouts.filter((w) => w.id !== id) })),
+        logWorkout: (w) => {
+          const id = uid()
+          upd((s) => ({ workouts: [...s.workouts, { ...w, id }].sort((x, y) => x.startedAt - y.startedAt) }))
+          return id
+        },
+        addRun: (r) => {
+          const id = uid()
+          upd((s) => ({ runs: [...s.runs, { ...r, id, edited: Date.now() }] }))
+          return id
+        },
 
         setSync: (p) => setS((s) => ({ sync: { ...s.sync, ...p } })),
         setPush: (p) => upd(() => ({ push: p })),
@@ -261,6 +275,13 @@ export const useStore = create<State>()(
     {
       name: 'grind',
       storage: createJSONStorage(() => idbStorage),
+      // v1 (03/11/2026) : objectif de poids passé de 75 à 80 kg (prise de muscle, pesée à 77 kg).
+      version: 1,
+      migrate: (persisted, from) => {
+        const p = persisted as Partial<State>
+        if (from < 1 && p.goalWeight === 75) { p.goalWeight = 80; p.updatedAt = Date.now() }
+        return p as State
+      },
       partialize: (s) => {
         const { hydrated: _h, ...rest } = s
         void _h

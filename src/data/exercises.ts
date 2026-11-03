@@ -135,7 +135,7 @@ const list: Exercise[] = [
     setup: 'Assis au sol, jambes tendues. Élastique autour du pied du lit ou de tes pieds, une extrémité dans chaque main, dos droit.',
     execution: 'Tire les mains vers le nombril en serrant les omoplates, tiens 1 s, relâche lentement.',
     errors: 'Arrondir le dos, se pencher en arrière, hausser les épaules.',
-    levels: bands({ label: 'Élastique F, reculé', band: 'F' }, { label: 'Élastique F, un bras à la fois', band: 'F' }),
+    levels: bands({ label: 'Élastique F, reculé', band: 'F' }, { label: 'Élastique F, un bras à la fois', band: 'F', uni: 'bras', anim: 'row-seated-uni' }),
   },
   {
     id: 'row-backpack',
@@ -164,7 +164,7 @@ const list: Exercise[] = [
     setup: 'À genoux face à la porte, élastique ancré en haut, une extrémité dans chaque main, bras tendus au-dessus de toi.',
     execution: 'Tire les coudes vers le bas et vers les hanches, poitrine sortie, jusqu’aux épaules. Remonte lentement.',
     errors: 'Tirer avec les bras seulement (pense « coudes dans les poches »), se pencher en arrière.',
-    levels: bands({ label: 'Élastique F, reculé', band: 'F' }, { label: 'Élastique F, un bras à la fois', band: 'F' }),
+    levels: bands({ label: 'Élastique F, reculé', band: 'F' }, { label: 'Élastique F, un bras à la fois', band: 'F', uni: 'bras', anim: 'pulldown-uni' }),
   },
   {
     id: 'pullover',
@@ -289,8 +289,8 @@ const list: Exercise[] = [
       { label: 'Sans charge' },
       { label: 'Sac moyen', sac: 'moyen' },
       { label: 'Sac lourd', sac: 'lourd' },
-      { label: 'Une jambe' },
-      { label: 'Une jambe + sac moyen', sac: 'moyen' },
+      { label: 'Une jambe', uni: 'jambe', anim: 'hip-thrust-uni' },
+      { label: 'Une jambe + sac moyen', sac: 'moyen', uni: 'jambe', anim: 'hip-thrust-uni' },
     ],
   },
   {
@@ -303,7 +303,7 @@ const list: Exercise[] = [
     setup: 'Allongé sur le ventre, pieds vers le lit, élastique ancré au pied du lit et passé autour des chevilles.',
     execution: 'Ramène les talons vers les fesses, serre 1 s, redescends lentement.',
     errors: 'Décoller les hanches du sol.',
-    levels: bands({ label: 'Élastique F, une jambe', band: 'F' }),
+    levels: bands({ label: 'Élastique F, une jambe', band: 'F', uni: 'jambe', anim: 'leg-curl-uni' }),
   },
   {
     id: 'rdl',
@@ -314,7 +314,7 @@ const list: Exercise[] = [
     setup: 'Debout sur l’élastique, pieds largeur de hanches, haut de la boucle dans les mains.',
     execution: 'Genoux légèrement fléchis et fixes, pousse les fesses vers l’arrière dos plat jusqu’à mi-tibias. Remonte en serrant les fesses.',
     errors: 'Dos rond, plier les genoux comme un squat.',
-    levels: bands({ label: 'Unilatéral, sac moyen en main', sac: 'moyen' }, { label: 'Unilatéral, sac lourd en main', sac: 'lourd' }),
+    levels: bands({ label: 'Unilatéral, sac moyen en main', sac: 'moyen', uni: 'jambe', anim: 'rdl-uni' }, { label: 'Unilatéral, sac lourd en main', sac: 'lourd', uni: 'jambe', anim: 'rdl-uni' }),
   },
 
   // ───────────── ABDOS ─────────────

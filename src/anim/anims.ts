@@ -263,9 +263,14 @@ const legCurl: AnimDef = {
   marks: [{ d: [10, 38], note: 'lit → pieds' }],
   keys: [
     { p: [112, 145], t: 0, h: -12, aN: { a: [140, 0] }, aF: { a: [142, 2] }, lN: { a: [180, 180] }, lF: { a: [181, 181] }, fN: 95, fF: 95 },
-    { p: [112, 145], t: 0, h: -12, aN: { a: [140, 0] }, aF: { a: [142, 2] }, lN: { a: [180, -75] }, lF: { a: [181, 181] }, fN: -165, fF: 95 },
+    { p: [112, 145], t: 0, h: -12, aN: { a: [140, 0] }, aF: { a: [142, 2] }, lN: { a: [180, -75] }, lF: { a: [181, -73] }, fN: -165, fF: -163 },
   ],
   dur: [1.0, 1.4], hold: [0.3, 0.6],
+}
+/** Niveau « une jambe » : seule la jambe proche travaille. */
+const legCurlUni: AnimDef = {
+  ...legCurl,
+  keys: [legCurl.keys[0], { ...legCurl.keys[1], lF: { a: [181, 181] }, fF: 95 }],
 }
 
 const rdl: AnimDef = {
@@ -383,6 +388,37 @@ const clamshellPose = (open: boolean): Pose => ({
 })
 const clamshell: AnimDef = { view: 'front', keys: [clamshellPose(false), clamshellPose(true)], dur: [0.9, 1.1], hold: [0.3, 0.6] }
 
+// ───────────── Variantes unilatérales (niveaux « un bras / une jambe à la fois ») ─────────────
+/** Rowing assis, un bras : la main libre repose sur la cuisse. */
+const rowSeatedUni: AnimDef = {
+  ...rowSeated,
+  bands: [{ from: LOW_ANCHOR, to: { j: 'handN' } }],
+  keys: rowSeated.keys.map((k) => ({ ...k, aF: { ik: { j: 'kneeF', o: [-14, -3] } } })),
+}
+/** Tirage à genoux, un bras : la main libre sur la hanche. */
+const pulldownUni: AnimDef = {
+  ...pulldownKneel,
+  bands: [{ from: HIGH_ANCHOR, to: { j: 'handN' } }],
+  keys: pulldownKneel.keys.map((k) => ({ ...k, aF: { ik: { j: 'hip', o: [4, -6] } } })),
+}
+/** Hip thrust sur une jambe : l'autre jambe reste tendue dans le prolongement du buste. */
+const hipThrustUni: AnimDef = {
+  ...hipThrust,
+  keys: [
+    { ...hipThrust.keys[0], lF: { a: [-28, -28] }, fF: -60 },
+    { ...hipThrust.keys[1], lF: { a: [-4, -4] }, fF: -80 },
+  ],
+}
+/** Soulevé de terre roumain sur une jambe : la jambe arrière monte en ligne avec le dos, sac dans la main. */
+const rdlUni: AnimDef = {
+  ...rdl,
+  bands: undefined,
+  keys: [
+    stand(100, { aN: { a: [92, 92] }, aF: { a: [94, 94] }, lF: { a: [96, 96] }, fF: 20 }),
+    stand(100, { p: [96, 79], t: -12, h: 0, aN: { a: [90, 90] }, aF: { a: [91, 91] }, lN: { ik: [100, FL] }, lF: { a: [168, 168] }, fF: 100 }),
+  ],
+}
+
 const tke: AnimDef = {
   scene: [{ k: 'bed', x: 160, w: 60 }],
   bands: [{ from: LOW_ANCHOR, to: { j: 'kneeN', o: [-4, 0] } }],
@@ -489,6 +525,7 @@ export const ANIMS: Record<string, AnimDef> = {
   'face-pull': facePull, 'pull-apart': pullApart, curl, hammer: curl,
   lunge, 'lunge-bulgare': lungeBulgare, 'box-squat': boxSquat, calf, 'hip-thrust': hipThrust,
   'leg-curl': legCurl, rdl,
+  'leg-curl-uni': legCurlUni, 'row-seated-uni': rowSeatedUni, 'pulldown-uni': pulldownUni, 'hip-thrust-uni': hipThrustUni, 'rdl-uni': rdlUni,
   'crunch-band': crunchBand, plank, 'leg-raise': legRaise, 'side-plank': sidePlank, 'dead-bug': deadBug, hollow,
   march, 'arm-circles': armCircles, 'cat-cow': catCow, 'scap-pushup': scapPushup, inchworm,
   'glute-bridge': gluteBridge, clamshell, tke, 'tib-raise': tibRaise, 'wall-sit': wallSit, 'bw-squat': bwSquat,

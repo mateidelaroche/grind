@@ -9,10 +9,9 @@ import { workOf } from '../data/muscles'
 import { IconBack, IconCheck, IconClose, IconGuided, IconInfo, IconList, IconMetro, IconNext, IconPause, IconPlay } from '../components/icons'
 import { fmtTime, GearChips, Sheet } from '../components/ui'
 import { beep, keepAwake, say, unlockAudio } from '../lib/audio'
-import { animOf, buildSteps, gearForExercise, levelOf, sessionGear, today, weekNumber, type Step } from '../lib/program'
+import { animOf, buildSteps, gearForExercise, lastReps, levelOf, sessionGear, today, weekNumber, type Step } from '../lib/program'
 import { useCountdown, useMetronome } from '../lib/timer'
 import { useStore, type ActiveSession } from '../store'
-import type { Workout } from '../types'
 
 const PHASE_TITLE = { warmup: 'Échauffement', main: 'Séance', cooldown: 'Retour au calme' }
 
@@ -54,7 +53,7 @@ function Ring({ value, total, children }: { value: number; total: number; childr
   )
 }
 
-type Nav = { prev?: () => void; next: () => void }
+type Nav = { prev?: () => void; next?: () => void }
 
 /** Barre fixée en bas, à portée de pouce : précédent · action principale · passer. */
 function ActionBar({ nav, children }: { nav?: Nav; children: React.ReactNode }) {
@@ -62,16 +61,24 @@ function ActionBar({ nav, children }: { nav?: Nav; children: React.ReactNode }) 
     <div className="wk-bar">
       {nav && <button className="wk-side" aria-label="Précédent" disabled={!nav.prev} onClick={nav.prev}><IconBack /><span>Préc.</span></button>}
       <div className="wk-main">{children}</div>
-      {nav && <button className="wk-side" aria-label="Passer" onClick={nav.next}><IconNext /><span>Passer</span></button>}
+      {nav?.next && <button className="wk-side" aria-label="Passer" onClick={nav.next}><IconNext /><span>Passer</span></button>}
     </div>
   )
 }
 
 // ───────────── Repos ─────────────
-export function RestTimer({ seconds, resetKey, onDone, nextLabel, nextAnim, feedback }: {
-  seconds: number; resetKey: string; onDone: () => void; nextLabel?: string; nextAnim?: string; feedback?: React.ReactNode
+/** Exercices qui suivent un repos : tout l'enchaînement jusqu'au repos suivant (superset = plusieurs). */
+function upcoming(steps: Step[], from: number): Step[] {
+  const out: Step[] = []
+  for (let j = from; j < steps.length && steps[j].kind === 'work'; j++) if (!out.some((x) => x.ex === steps[j].ex)) out.push(steps[j])
+  return out
+}
+
+export function RestTimer({ seconds, resetKey, onDone, next = [], feedback, nav }: {
+  seconds: number; resetKey: string; onDone: () => void; next?: Step[]; feedback?: React.ReactNode; nav?: Nav
 }) {
   const t = useCountdown(seconds, { autoStart: true, resetKey, onEnd: () => { say('C’est reparti'); onDone() } })
+  const [open, setOpen] = useState<Step>()
   return (
     <div className="workout-body wk rest">
       <div className="wk-center">
@@ -85,14 +92,24 @@ export function RestTimer({ seconds, resetKey, onDone, nextLabel, nextAnim, feed
           <button className="btn" onClick={() => t.add(15)}>+15 s</button>
         </div>
       </div>
-      {nextLabel && (
-        <div className="next-up">
-          {nextAnim && <Figure anim={nextAnim} keyIndex={0} playing={false} className="figure mini" />}
-          <div className="grow"><div className="tiny muted">ENSUITE</div><b>{nextLabel}</b></div>
+      {next.length > 0 && (
+        <div className="stack" style={{ gap: 6 }}>
+          <div className="tiny muted">{next.length > 1 ? 'ENSUITE · ENCHAÎNÉS SANS REPOS' : 'ENSUITE'} · touche pour voir la mise en place</div>
+          {next.map((x) => (
+            <button key={x.key} className="next-up tap" onClick={() => setOpen(x)}>
+              <Figure anim={animOf(x.ex!, x.level ?? 0)} keyIndex={0} playing={false} className="figure mini" />
+              <div className="grow" style={{ textAlign: 'left' }}>
+                <b>{stepTitle(x)}</b>
+                <div className="small muted">{[x.rounds && x.rounds > 1 ? `série ${x.round}/${x.rounds}` : '', x.side ?? '', levelOf(x.ex!, x.level ?? 0)?.label ?? ''].filter(Boolean).join(' · ')}</div>
+              </div>
+              <IconInfo />
+            </button>
+          ))}
         </div>
       )}
       {feedback}
-      <ActionBar><button className="btn primary big block" onClick={onDone}>Passer le repos <IconNext /></button></ActionBar>
+      <ActionBar nav={nav}><button className="btn primary big block" onClick={onDone}>Passer le repos <IconNext /></button></ActionBar>
+      {open && <HowToSheet exId={open.ex!} level={open.level ?? 0} tempo={open.item?.tempo} demo onClose={() => setOpen(undefined)} />}
     </div>
   )
 }
@@ -133,18 +150,6 @@ function TimedWork({ step, onDone, nav }: { step: Step; onDone: (held: number) =
 }
 
 // ───────────── Reps ─────────────
-/** Reps proposées : celles de la dernière fois sur la même série, sinon le bas de la fourchette. */
-function prefillReps(st: Step, session: string, workouts: Workout[], currentId: string): number {
-  for (let k = workouts.length - 1; k >= 0; k--) {
-    const w = workouts[k]
-    if (w.id === currentId || w.session !== session) continue
-    const r = st.recKey ? w.sets[st.recKey] : undefined
-    if (r && r.ex === st.ex && r.reps?.length) return r.reps[Math.min((st.round ?? 1) - 1, r.reps.length - 1)]
-  }
-  const n = parseInt(st.item?.reps ?? '', 10)
-  return Number.isFinite(n) ? n : 10
-}
-
 function RepsPad({ value, onChange, unit }: { value: number; onChange: (v: number) => void; unit: string }) {
   return (
     <div className="reps-pad">
@@ -156,13 +161,16 @@ function RepsPad({ value, onChange, unit }: { value: number; onChange: (v: numbe
 }
 
 /** Consignes complètes, matériel et muscles : dans une fenêtre, pour garder l'écran de séance lisible. */
-function HowToSheet({ exId, level, onClose }: { exId: string; level: number; onClose: () => void }) {
+function HowToSheet({ exId, level, onClose, demo, tempo }: { exId: string; level: number; onClose: () => void; demo?: boolean; tempo?: string }) {
   const ex = EXERCISES[exId]
+  const lvl = levelOf(exId, level)
   const mastered = useStore((s) => !!s.mastered[exId])
   const setMastered = useStore((s) => s.setMastered)
   return (
     <Sheet onClose={onClose}>
       <div className="ex-name">{ex.name}</div>
+      {lvl && ex.levels!.length > 1 && <div className="small muted" style={{ marginTop: -8 }}>{lvl.label}</div>}
+      {demo && <Demo anim={animOf(exId, level)} band={lvl?.band} tempo={tempo} />}
       <GearChips gear={gearForExercise(exId, level)} />
       <HowTo exId={exId} />
       <MuscleMap work={workOf(exId)} compact />
@@ -209,8 +217,7 @@ function Guided({ steps, active, onValidate, onUnvalidate, onFinish }: {
         })}
       </div>
     )
-    const nextAnim = nextWork?.ex ? animOf(nextWork.ex, nextWork.level ?? 0) : undefined
-    return <RestTimer seconds={st.rest!} resetKey={st.key} onDone={() => go(i + 1)} nextLabel={nextLabel} nextAnim={nextAnim} feedback={feedback} />
+    return <RestTimer seconds={st.rest!} resetKey={st.key} onDone={() => go(i + 1)} next={upcoming(steps, i + 1)} feedback={feedback} nav={{ prev: nav.prev }} />
   }
 
   const sameRoundNext = steps[i + 1]?.kind === 'work' && steps[i + 1].phase === st.phase && steps[i + 1].label?.[0] === st.label?.[0] && steps[i + 1].label !== st.label
@@ -240,10 +247,13 @@ function WorkStep({ st, active, done, nav, superset, onValidate, onUnvalidate }:
   const [metro, setMetro] = useState(false)
   const [info, setInfo] = useState(false)
   const counted = !!st.recKey && !st.duration
-  const [reps, setReps] = useState(() => (counted ? prefillReps(st, active.session, useStore.getState().workouts, active.workoutId) : 0))
+  // Série déjà validée : on réaffiche les reps réellement faites.
+  const doneReps = useStore((s) => (st.recKey ? s.workouts.find((w) => w.id === active.workoutId)?.sets[st.recKey]?.reps?.[(st.round ?? 1) - 1] : undefined))
+  const [reps, setReps] = useState(() => (counted ? lastReps(st, active.session, useStore.getState().workouts, active.workoutId) : 0))
   useMetronome(st.item?.tempo, metro)
 
-  const unit = `reps${st.item?.reps?.includes('/') ? ' / ' + st.item.reps.split('/ ')[1] : ''}`
+  const perSide = st.item?.reps?.includes('/') ? st.item.reps.split('/ ')[1] : lvl?.uni
+  const unit = `reps${perSide ? ' / ' + perSide : ''}`
   const detail = [
     st.item?.duration ? st.item.durationLabel && `Fourchette ${st.item.durationLabel}` : st.item?.reps && `Objectif ${st.item.reps}`,
     st.phase === 'main' && st.rounds! > 1 ? 'RIR 1-2' : '',
@@ -286,7 +296,7 @@ function WorkStep({ st, active, done, nav, superset, onValidate, onUnvalidate }:
             {counted && !done ? (
               <RepsPad value={reps} onChange={setReps} unit={unit} />
             ) : (
-              <div className="reps-val"><b>{st.item?.reps?.split(' ')[0]}</b><small>{unit}</small></div>
+              <div className="reps-val"><b>{done && doneReps !== undefined ? doneReps : st.item?.reps?.split(' ')[0]}</b><small>{done && doneReps !== undefined ? `${unit} faites` : unit}</small></div>
             )}
             {detail && <div className="small muted center">{detail}</div>}
             {done && <button className="btn sm ghost" onClick={onUnvalidate}>Annuler la validation</button>}

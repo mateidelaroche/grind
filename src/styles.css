@@ -102,6 +102,9 @@ a.btn { text-decoration: none; color: var(--text); }
 .day.today { border-color: var(--accent-hi); color: var(--text); }
 .day .ic { font-size: 17px; line-height: 1; }
 .day.done { background: #0b2a1a; border-color: #14532d; }
+button.day { width: 100%; min-height: 64px; }
+button.day:active { background: var(--surface-2); }
+.week-head .icon-btn { font-size: 26px; line-height: 1; }
 
 /* Figures */
 .figure { width: 100%; aspect-ratio: 4 / 3; display: block; background: radial-gradient(ellipse at 50% 30%, #141c2b, #0d121c 70%); border-radius: 14px; }
@@ -145,6 +148,8 @@ a.btn { text-decoration: none; color: var(--text); }
 
 .sheet-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 40; display: flex; align-items: flex-end; }
 .sheet { width: 100%; max-width: 560px; margin: 0 auto; background: var(--surface); border-radius: 22px 22px 0 0; border: 1px solid var(--border); padding: 0 16px calc(var(--safe-b) + 16px); display: flex; flex-direction: column; gap: 12px; max-height: 88dvh; overflow: auto; overscroll-behavior: contain; animation: up 0.22s ease-out; }
+/* Dans une fenêtre qui défile, les blocs (animation, carte) gardent leur taille au lieu d'être écrasés. */
+.sheet > * { flex-shrink: 0; }
 .sheet-bg { animation: fade 0.2s ease-out; transition: opacity 0.2s; }
 .sheet-bg.closing { opacity: 0; }
 .sheet-bg.closing .sheet { transform: translateY(100%); transition: transform 0.2s ease-in; }
@@ -272,9 +277,11 @@ a.btn { text-decoration: none; color: var(--text); }
 .wk .ring .val { font-size: 64px; }
 .reps-btn.sec { width: 60px; height: 60px; font-size: 20px; font-weight: 700; }
 .wk .timer { padding: 0; }
-.wk.rest .ring { width: min(74vw, 290px); }
+.wk.rest .ring { width: min(66vw, 32dvh, 270px); }
 .wk.rest .ring .val { font-size: 92px; }
-.next-up { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 14px; background: var(--surface); border: 1px solid var(--border); }
+.next-up { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 14px; background: var(--surface); border: 1px solid var(--border); width: 100%; }
+.next-up.tap:active { background: var(--surface-2); }
+.next-up > svg { width: 22px; height: 22px; color: var(--text-2); flex: none; }
 .chip.tap { height: 40px; padding: 0 14px; font-size: 14px; }
 .sheet .workout-body { padding-bottom: 0; }
 .sheet .wk-bar { background: linear-gradient(transparent, var(--surface) 16px); }

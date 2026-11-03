@@ -12,11 +12,12 @@ import type { RunKind } from './Run'
 import { KneeNextCard, RunTodayCard } from './RunViews'
 import { runProgress, RUN_PLAN } from '../data/running'
 import { MeasuresSheet, monthlyDue, testDue, TestsSheet, weighDue, WeighIn } from './Body'
+import DaySheet from './DaySheet'
 
 const planIcon = (p: DayPlan) => (p.type === 'session' ? '💪' : p.type === 'basket' ? '🏀' : '😴')
 
-export default function Today({ onStart, onOpenSession, onFood, onPhotos, onRun, onRunOpen, onRunProgram }: {
-  onStart: (s: SessionId, express: boolean) => void; onOpenSession: (s: SessionId) => void; onFood: () => void; onPhotos: () => void
+export default function Today({ onStart, onOpenSession, onOpenWorkout, onFood, onPhotos, onRun, onRunOpen, onRunProgram }: {
+  onStart: (s: SessionId, express: boolean) => void; onOpenSession: (s: SessionId) => void; onOpenWorkout: (id: string) => void; onFood: () => void; onPhotos: () => void
   onRun: (k: RunKind) => void; onRunOpen: (id: string) => void; onRunProgram: () => void
 }) {
   const s = useStore()
@@ -35,7 +36,9 @@ export default function Today({ onStart, onOpenSession, onFood, onPhotos, onRun,
   const runDay = (date: string) => isRunDay(date, runStart, runDone)
   const runToday = runDay(d) || s.runs.some((r) => r.date === d)
 
-  const monday = mondayOf(d)
+  const [weekOff, setWeekOff] = useState(0)
+  const [dayOpen, setDayOpen] = useState<string>()
+  const monday = addDays(mondayOf(d), weekOff * 7)
   const days = Array.from({ length: 7 }, (_, i) => addDays(monday, i))
 
   const opts = { week, express: false, levels: s.levels, edits: s.edits, timeTargets: s.timeTargets }
@@ -195,21 +198,37 @@ export default function Today({ onStart, onOpenSession, onFood, onPhotos, onRun,
       )}
 
       {/* Semaine */}
-      <div className="section-title">Cette semaine</div>
+      <div className="row between week-head">
+        <button className="icon-btn" aria-label="Semaine précédente" onClick={() => setWeekOff(weekOff - 1)}>‹</button>
+        <button className="grow center" onClick={() => setWeekOff(0)}>
+          <div className="section-title" style={{ margin: 0 }}>{weekOff === 0 ? 'Cette semaine' : weekOff === -1 ? 'Semaine dernière' : weekOff === 1 ? 'Semaine prochaine' : `Semaine du ${formatDate(monday).split(' ').slice(1).join(' ')}`}</div>
+          <div className="tiny muted">{weekOff === 0 ? 'Touche un jour pour le détail' : 'Touche ici pour revenir à cette semaine'}</div>
+        </button>
+        <button className="icon-btn" aria-label="Semaine suivante" onClick={() => setWeekOff(weekOff + 1)}>›</button>
+      </div>
       <div className="week">
         {days.map((date, i) => {
           const p = dayPlan(date, s.overrides)
           const done = doneOn(date).length > 0 || (p.type === 'basket' && s.basket[date]?.done)
           const run = runDay(date)
           return (
-            <div key={date} className={`day ${date === d ? 'today' : ''} ${done ? 'done' : ''}`}>
-              <span>{DAY_SHORT[i]}</span>
+            <button key={date} className={`day ${date === d ? 'today' : ''} ${done ? 'done' : ''}`} onClick={() => setDayOpen(date)}>
+              <span>{DAY_SHORT[i]} {date.slice(8).replace(/^0/, '')}</span>
               <span className="ic">{done ? '✅' : run ? '🏃' : planIcon(p)}</span>
               <span>{run && p.type === 'session' ? `+${p.session}` : run ? 'course' : p.type === 'session' ? p.session : p.type === 'basket' ? (p.match ? 'match' : 'bask.') : '—'}</span>
-            </div>
+            </button>
           )
         })}
       </div>
+      {dayOpen && (
+        <DaySheet
+          date={dayOpen}
+          onClose={() => setDayOpen(undefined)}
+          onOpenWorkout={(id) => { setDayOpen(undefined); onOpenWorkout(id) }}
+          onOpenSession={(sid) => { setDayOpen(undefined); onOpenSession(sid) }}
+          onOpenRun={(id) => { setDayOpen(undefined); onRunOpen(id) }}
+        />
+      )}
 
       {s.settings.coach && (
         <div className="card" style={{ flexDirection: 'row', alignItems: 'center' }}>

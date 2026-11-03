@@ -84,6 +84,7 @@ export default function App() {
       <Today
         onStart={start}
         onOpenSession={(id) => push({ p: 'session', id })}
+        onOpenWorkout={(id) => push({ p: 'recap', id })}
         onFood={() => push({ p: 'food' })}
         onRun={(kind) => push({ p: 'runprep', kind })}
         onRunOpen={(id) => push({ p: 'runrecap', id })}

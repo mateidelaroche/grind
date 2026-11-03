@@ -36,7 +36,7 @@ export default function Food({ onBack }: { onBack: () => void }) {
         <button className="icon-btn" onClick={onBack} aria-label="Retour"><IconBack /></button>
         <div className="grow ex-name">Alimentation</div>
       </div>
-      <div className="small muted">Aucune obligation. Pour prendre du volume à 1m88 et 70 kg, c’est pourtant le levier n°1. Voici le strict minimum, zéro effort.</div>
+      <div className="small muted">Aucune obligation. Pour prendre du muscle à 1m88, c’est pourtant le levier n°1. Voici le strict minimum, zéro effort.</div>
 
       {trend && (
         <div className={`card ${trend.gain < 0.3 ? '' : 'accent'}`} style={trend.gain < 0.3 ? { borderColor: '#a16207' } : undefined}>

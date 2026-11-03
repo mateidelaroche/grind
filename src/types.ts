@@ -9,6 +9,8 @@ export interface Level {
   sac?: Sac
   /** Animation spécifique à ce niveau (ex. fente bulgare). */
   anim?: string
+  /** Niveau fait d'un bras / d'une jambe à la fois : les reps s'entendent par côté. */
+  uni?: 'bras' | 'jambe'
 }
 
 export interface Exercise {

@@ -150,6 +150,18 @@ export interface Step {
   restPause?: boolean
 }
 
+/** Reps proposées : celles de la dernière fois sur la même série de la même séance, sinon le bas de la fourchette. */
+export function lastReps(st: Step, session: string, workouts: Workout[], excludeId?: string): number {
+  for (let k = workouts.length - 1; k >= 0; k--) {
+    const w = workouts[k]
+    if (w.id === excludeId || w.session !== session) continue
+    const r = st.recKey ? w.sets[st.recKey] : undefined
+    if (r && r.ex === st.ex && r.reps?.length) return r.reps[Math.min((st.round ?? 1) - 1, r.reps.length - 1)]
+  }
+  const n = parseInt(st.item?.reps ?? '', 10)
+  return Number.isFinite(n) ? n : 10
+}
+
 export interface BuildOpts {
   week: number
   express: boolean
