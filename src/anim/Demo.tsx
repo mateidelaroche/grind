@@ -1,6 +1,7 @@
 import { lazy, Suspense, useSyncExternalStore } from 'react'
 import Figure from './Figure'
 import { tempoAnim } from './anims'
+import YouTubeLoop from './YouTubeLoop'
 import { useStore } from '../store'
 import type { VideoRef } from '../data/videos'
 import type { Band } from '../types'
@@ -24,14 +25,8 @@ const subscribe = (cb: () => void) => {
 }
 const useOnline = () => useSyncExternalStore(subscribe, () => navigator.onLine)
 
-/** Vidéo YouTube en boucle, sans son au départ (touche la vidéo pour le son et le plein écran). */
-function YouTube({ v }: { v: VideoRef }) {
-  const src = `https://www.youtube-nocookie.com/embed/${v.id}?autoplay=1&mute=1&playsinline=1&loop=1&playlist=${v.id}&rel=0&modestbranding=1`
-  return <iframe className="figure video-frame" src={src} title={v.title} allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen />
-}
-
 /** Grande démo d'un exercice : vidéo YouTube si dispo et en ligne, sinon animation 3D (ou silhouette 2D). */
-export default function Demo({ anim: base, band, tempo, video }: { anim: string; band?: Band; tempo?: string; video?: VideoRef }) {
+export default function Demo({ anim: base, band, tempo, video }: { anim: string; band?: Band; tempo?: string; video?: VideoRef & { key: string } }) {
   const anim = tempoAnim(base, tempo)
   const use3d = useStore((s) => s.settings.anim3d) && webgl
   const mode = useStore((s) => s.settings.demo ?? 'video')
@@ -46,7 +41,7 @@ export default function Demo({ anim: base, band, tempo, video }: { anim: string;
   if (!video) return animation
   return (
     <div className="demo">
-      {showVideo ? <YouTube v={video} /> : animation}
+      {showVideo ? <YouTubeLoop key={video.key} v={video} /> : animation}
       <div className="row between demo-bar">
         <div className="seg demo-switch">
           <button className={mode === 'video' ? 'on' : ''} onClick={() => setSettings({ demo: 'video' })}>▶ Vidéo</button>

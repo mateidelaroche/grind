@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { COACH_LINES, pick } from '../data/coach'
 import { SESSIONS } from '../data/sessions'
 import { GearLine, Sheet, Stepper, toast } from '../components/ui'
@@ -11,6 +11,7 @@ import type { DayPlan, SessionId } from '../types'
 import type { RunKind } from './Run'
 import { KneeNextCard, RunTodayCard } from './RunViews'
 import { runProgress, RUN_PLAN } from '../data/running'
+import { fmtDur, fmtKm } from '../lib/gps'
 import { MeasuresSheet, monthlyDue, testDue, TestsSheet, weighDue, WeighIn } from './Body'
 import DaySheet from './DaySheet'
 
@@ -49,6 +50,32 @@ export default function Today({ onStart, onOpenSession, onOpenWorkout, onFood, o
   let streak = 0
   for (let k = stretchedToday ? 0 : 1; stretchedOn(addDays(d, -k)); k++) streak++
   const morning = new Date().getHours() < 12
+  const runsToday = s.runs.filter((r) => r.date === d)
+  const routinesToday = s.workouts.filter((w) => w.date === d && w.completed && SESSIONS[w.session].kind === 'routine' && w.session !== 'MATIN')
+  const pendingTests = !!testId || (weighDue(s.weights) && weekday(d) === 0) || (monthlyDue(Object.keys(s.measures)) && weekday(d) <= 1)
+  const allDone = stretchedToday && !pendingTests
+    && (plan.type !== 'session' || doneToday.length > 0)
+    && (plan.type !== 'basket' || !!basket?.done)
+    && (!runToday || runsToday.length > 0)
+  const line = (key: string, label: string, detail: string, onClick?: () => void, extra?: ReactNode) => (
+    <div key={key} className="list-row">
+      <button className="row grow" style={{ textAlign: 'left', gap: 8 }} onClick={onClick} disabled={!onClick}>
+        <span className="grow" style={{ fontWeight: 650 }}>✅ {label}</span>
+        <span className="small muted">{detail}{onClick ? ' ›' : ''}</span>
+      </button>
+      {extra}
+    </div>
+  )
+  const mins = (w: { startedAt: number; endedAt?: number }) => (w.endedAt ? `${Math.max(1, Math.round((w.endedAt - w.startedAt) / 60000))} min` : '')
+  const doneLines = [
+    ...s.workouts.filter((w) => w.date === d && w.session === 'MATIN' && w.completed).slice(-1).map((w) => line(w.id, 'Étirements du matin', `${mins(w)}${streak > 1 ? ` · 🔥 ${streak} j` : ''}`, () => onOpenWorkout(w.id))),
+    ...runsToday.map((r) => line(r.id, r.indoor ? 'Cardio en chambre' : 'Course', r.dist > 0 ? `${fmtKm(r.dist)} km` : fmtDur(r.dur), () => onRunOpen(r.id))),
+    ...doneToday.map((w) => line(w.id, SESSIONS[w.session].name, mins(w), () => onOpenWorkout(w.id))),
+    ...routinesToday.map((w) => line(w.id, SESSIONS[w.session].name, mins(w), () => onOpenWorkout(w.id))),
+    ...(plan.type === 'basket' && basket?.done ? [line('basket', plan.match ? 'Match' : 'Basket', 'genou', undefined, (
+      <Stepper value={basket.knee ?? 0} min={0} max={10} onChange={(v) => s.setBasket(d, { done: true, knee: v })} format={(v) => `${v}/10`} />
+    ))] : []),
+  ]
   const matinCard = (
     <div className={`card ${morning && !stretchedToday ? 'accent' : ''}`}>
       <div className="row between">
@@ -96,21 +123,54 @@ export default function Today({ onStart, onOpenSession, onOpenWorkout, onFood, o
         </button>
       )}
 
-      {/* Programme */}
-      <div className="card">
-        <div className="row between">
-          <div style={{ fontWeight: 700 }}>{week === 0 ? 'Programme 12 semaines' : `Semaine ${week}${week <= PROGRAM_WEEKS ? `/${PROGRAM_WEEKS}` : ''}`}</div>
-          <span className="badge">{phase.name}</span>
-        </div>
-        {week === 0 ? (
-          <div className="small muted">Début lundi {formatDate(s.startDate).split(' ').slice(1).join(' ')} (J-{diffDays(s.startDate, d)}). D’ici là, tu peux déjà tester les séances pour prendre tes marques.</div>
-        ) : (
-          <div className="small muted">{phase.desc}</div>
-        )}
-        <div className="progress"><div style={{ width: `${Math.min(100, (Math.max(0, diffDays(d, s.startDate) + 1) / (PROGRAM_WEEKS * 7)) * 100)}%` }} /></div>
-      </div>
+      {/* À faire aujourd'hui : uniquement ce qui reste ; ce qui est fait descend en une ligne plus bas */}
+      <div className="section-title">À faire aujourd’hui</div>
+      {!stretchedToday && matinCard}
+      {runToday && !runsToday.length && <RunTodayCard onRun={onRun} onOpen={onRunOpen} />}
+      {plan.type === 'session' && !doneToday.length && (() => {
+        const ses = SESSIONS[plan.session]
+        return (
+          <div className="card accent">
+            <div className="row between">
+              <div className="section-title" style={{ margin: 0 }}>{runToday ? 'Après la course' : 'Aujourd’hui'}{plan.moved ? ' · déplacée' : ''}</div>
+              <span className="small muted">{ses.duration}</span>
+            </div>
+            <div>
+              <div className="ex-name">{ses.name}</div>
+              <div className="muted">{ses.subtitle}</div>
+            </div>
+            {legWarning(plan.session, d) && <div className="badge warn" style={{ height: 'auto', padding: 8 }}>⚠️ Jambes la veille d’un basket : allège ou décale si tu peux.</div>}
+            {(
+              <>
+                <GearLine gear={sessionGear(plan.session, opts)} />
+                <button className="btn primary big block" onClick={() => onStart(plan.session, false)}>Démarrer</button>
+                <div className="row">
+                  <button className="btn grow" onClick={() => onStart(plan.session, true)}>⚡ Express 25′</button>
+                  <button className="btn grow" onClick={() => setMoving(true)}>📅 Déplacer</button>
+                </div>
+              </>
+            )}
+            <button className="btn sm ghost" style={{ alignSelf: 'flex-start' }} onClick={() => onOpenSession(plan.session)}>Voir le détail de la séance</button>
+          </div>
+        )
+      })()}
 
-      {morning && !stretchedToday && matinCard}
+      {plan.type === 'basket' && !basket?.done && (
+        <div className="card accent">
+          <div className="section-title" style={{ margin: 0 }}>Aujourd’hui</div>
+          <div className="ex-name">🏀 {plan.match ? 'Match' : 'Basket'} ce soir · 20h30</div>
+          <div className="muted small">Fais ta routine genoux avant de partir. Jamais de jambes ni de séries à fond avant le basket.</div>
+          <button className="btn primary big block" onClick={() => onStart('GENOUX', false)}>🦵 Routine genoux · 7 min</button>
+          {!plan.match && <button className="btn block" onClick={() => onStart('BONUS', false)}>Bonus avant basket · 12 min</button>}
+          <div className="list-row" style={{ borderTop: '1px solid var(--border)', paddingTop: 12 }}>
+            <div className="grow">
+              <div style={{ fontWeight: 600 }}>Basket fait</div>
+              <div className="small muted">Pour ton suivi de régularité</div>
+            </div>
+            <button className={`btn sm ${basket?.done ? 'primary' : ''}`} onClick={() => s.setBasket(d, basket?.done ? undefined : { done: true })}>{basket?.done ? '✓ Fait' : 'Marquer'}</button>
+          </div>
+        </div>
+      )}
 
       {/* À faire : tests, pesée, mensurations */}
       {testId && (
@@ -140,63 +200,14 @@ export default function Today({ onStart, onOpenSession, onOpenWorkout, onFood, o
 
       <KneeNextCard />
 
-      {/* Aujourd'hui */}
-      {runToday && <RunTodayCard onRun={onRun} onOpen={onRunOpen} />}
-      {plan.type === 'session' && (() => {
-        const ses = SESSIONS[plan.session]
-        return (
-          <div className="card accent">
-            <div className="row between">
-              <div className="section-title" style={{ margin: 0 }}>{runToday ? 'Après la course' : 'Aujourd’hui'}{plan.moved ? ' · déplacée' : ''}</div>
-              <span className="small muted">{ses.duration}</span>
-            </div>
-            <div>
-              <div className="ex-name">{ses.name}</div>
-              <div className="muted">{ses.subtitle}</div>
-            </div>
-            {legWarning(plan.session, d) && <div className="badge warn" style={{ height: 'auto', padding: 8 }}>⚠️ Jambes la veille d’un basket : allège ou décale si tu peux.</div>}
-            {doneToday.length > 0 ? (
-              <div className="badge ok" style={{ height: 32, alignSelf: 'flex-start' }}>✅ Séance faite aujourd’hui</div>
-            ) : (
-              <>
-                <GearLine gear={sessionGear(plan.session, opts)} />
-                <button className="btn primary big block" onClick={() => onStart(plan.session, false)}>Démarrer</button>
-                <div className="row">
-                  <button className="btn grow" onClick={() => onStart(plan.session, true)}>⚡ Express 25′</button>
-                  <button className="btn grow" onClick={() => setMoving(true)}>📅 Déplacer</button>
-                </div>
-              </>
-            )}
-            <button className="btn sm ghost" style={{ alignSelf: 'flex-start' }} onClick={() => onOpenSession(plan.session)}>Voir le détail de la séance</button>
-          </div>
-        )
-      })()}
-
-      {plan.type === 'basket' && (
-        <div className="card accent">
-          <div className="section-title" style={{ margin: 0 }}>Aujourd’hui</div>
-          <div className="ex-name">🏀 {plan.match ? 'Match' : 'Basket'} ce soir · 20h30</div>
-          <div className="muted small">Fais ta routine genoux avant de partir. Jamais de jambes ni de séries à fond avant le basket.</div>
-          <button className="btn primary big block" onClick={() => onStart('GENOUX', false)}>🦵 Routine genoux · 7 min</button>
-          {!plan.match && <button className="btn block" onClick={() => onStart('BONUS', false)}>Bonus avant basket · 12 min</button>}
-          <div className="list-row" style={{ borderTop: '1px solid var(--border)', paddingTop: 12 }}>
-            <div className="grow">
-              <div style={{ fontWeight: 600 }}>Basket fait</div>
-              <div className="small muted">Pour ton suivi de régularité</div>
-            </div>
-            <button className={`btn sm ${basket?.done ? 'primary' : ''}`} onClick={() => s.setBasket(d, basket?.done ? undefined : { done: true })}>{basket?.done ? '✓ Fait' : 'Marquer'}</button>
-          </div>
-          {basket?.done && (
-            <div className="row between">
-              <span className="small muted">Douleur genou (0-10)</span>
-              <Stepper value={basket.knee ?? 0} min={0} max={10} onChange={(v) => s.setBasket(d, { done: true, knee: v })} />
-            </div>
-          )}
-          {basket?.knee !== undefined && basket.knee > 5 && <div className="small" style={{ color: 'var(--warn)' }}>Au-dessus de 5/10 : allège la prochaine séance jambes. Si ça dure plus de 2-3 semaines, va voir un kiné.</div>}
+      <KneeNextCard />
+      {allDone && (
+        <div className="card accent" style={{ alignItems: 'center', textAlign: 'center' }}>
+          <div className="ex-name">Journée bouclée 💪</div>
+          <div className="small muted">Tout ce qui était prévu aujourd’hui est fait. {plan.type === 'rest' || doneToday.length ? 'Récupère bien.' : ''}</div>
         </div>
       )}
-
-      {plan.type === 'rest' && (
+      {plan.type === 'rest' && !allDone && (
         <div className="card accent">
           <div className="section-title" style={{ margin: 0 }}>Aujourd’hui</div>
           <div className="ex-name">😴 Repos</div>
@@ -211,19 +222,6 @@ export default function Today({ onStart, onOpenSession, onOpenWorkout, onFood, o
         </div>
       )}
 
-      {!runDone && d < runStart && diffDays(runStart, d) <= 21 && (
-        <button className="card tap" style={{ flexDirection: 'row', alignItems: 'center' }} onClick={onRunProgram}>
-          <span style={{ fontSize: 22 }}>🏃</span>
-          <div className="grow">
-            <div style={{ fontWeight: 600 }}>La course commence {formatDate(nextRunDay(runStart, runStart))}</div>
-            <div className="small muted">D’ici là, fais une petite sortie libre (même en marchant) pour tester le GPS.</div>
-          </div>
-          <span className="muted">›</span>
-        </button>
-      )}
-
-      {/* Semaine */}
-      {!(morning && !stretchedToday) && matinCard}
 
       <div className="row between week-head">
         <button className="icon-btn" aria-label="Semaine précédente" onClick={() => setWeekOff(weekOff - 1)}>‹</button>
@@ -257,6 +255,26 @@ export default function Today({ onStart, onOpenSession, onOpenWorkout, onFood, o
         />
       )}
 
+      {!runDone && d < runStart && diffDays(runStart, d) <= 21 && (
+        <button className="card tap" style={{ flexDirection: 'row', alignItems: 'center' }} onClick={onRunProgram}>
+          <span style={{ fontSize: 22 }}>🏃</span>
+          <div className="grow">
+            <div style={{ fontWeight: 600 }}>La course commence {formatDate(nextRunDay(runStart, runStart))}</div>
+            <div className="small muted">D’ici là, fais une petite sortie libre (même en marchant) pour tester le GPS.</div>
+          </div>
+          <span className="muted">›</span>
+        </button>
+      )}
+
+      {/* Fait aujourd'hui : une ligne par chose faite, vers le récap */}
+      {doneLines.length > 0 && (
+        <>
+          <div className="section-title">Fait aujourd’hui</div>
+          <div className="card" style={{ padding: '4px 16px', gap: 0 }}>{doneLines}</div>
+          {basket?.done && (basket.knee ?? 0) > 5 && <div className="small" style={{ color: 'var(--warn)' }}>Genou au-dessus de 5/10 : allège la prochaine séance jambes. Si ça dure plus de 2-3 semaines, va voir un kiné.</div>}
+        </>
+      )}
+
       {s.settings.coach && (
         <div className="card" style={{ flexDirection: 'row', alignItems: 'center' }}>
           <span style={{ fontSize: 26 }}>🗣️</span>
@@ -272,6 +290,20 @@ export default function Today({ onStart, onOpenSession, onOpenWorkout, onFood, o
         </div>
         <span className="muted">›</span>
       </button>
+
+      {/* Programme */}
+      <div className="card">
+        <div className="row between">
+          <div style={{ fontWeight: 700 }}>{week === 0 ? 'Programme 12 semaines' : `Semaine ${week}${week <= PROGRAM_WEEKS ? `/${PROGRAM_WEEKS}` : ''}`}</div>
+          <span className="badge">{phase.name}</span>
+        </div>
+        {week === 0 ? (
+          <div className="small muted">Début lundi {formatDate(s.startDate).split(' ').slice(1).join(' ')} (J-{diffDays(s.startDate, d)}). D’ici là, tu peux déjà tester les séances pour prendre tes marques.</div>
+        ) : (
+          <div className="small muted">{phase.desc}</div>
+        )}
+        <div className="progress"><div style={{ width: `${Math.min(100, (Math.max(0, diffDays(d, s.startDate) + 1) / (PROGRAM_WEEKS * 7)) * 100)}%` }} /></div>
+      </div>
 
       {sheet === 'tests' && <TestsSheet initial={testId} onClose={() => setSheet(undefined)} />}
       {sheet === 'measures' && <MeasuresSheet onClose={() => setSheet(undefined)} />}

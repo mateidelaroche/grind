@@ -101,9 +101,10 @@ export function tempoOf(exId: string): string | undefined {
 }
 
 /** Démo YouTube d'un exercice ; un niveau qui change le mouvement (bulgare, unilatéral) a la sienne. */
-export function videoOf(exId: string, lvl: number): VideoRef | undefined {
+export function videoOf(exId: string, lvl: number): (VideoRef & { key: string }) | undefined {
   const a = levelOf(exId, lvl)?.anim
-  return (a && VIDEOS[a]) || VIDEOS[exId]
+  const key = a && VIDEOS[a] ? a : exId
+  return VIDEOS[key] && { ...VIDEOS[key], key }
 }
 
 export const animOf = (exId: string, lvl: number) => {
