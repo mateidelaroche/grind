@@ -38,13 +38,13 @@ function loadApi(): Promise<YTNamespace> {
 const DEFAULT_LEN = 10
 const fmt = (t: number) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`
 
-export default function YouTubeLoop({ v }: { v: VideoRef & { key: string } }) {
+export default function YouTubeLoop({ v, startEditing, onSaved }: { v: VideoRef & { key: string }; startEditing?: boolean; onSaved?: () => void }) {
   // Réglage propre à cette vidéo (si la vidéo d'un exercice change, l'ancien réglage ne s'applique pas).
-  const loopKey = `${v.key}@${v.id}`
+  const loopKey = loopKeyOf(v)
   const saved = useStore((s) => s.videoLoops?.[loopKey])
   const setVideoLoop = useStore((s) => s.setVideoLoop)
   const loop: [number, number] = saved ?? v.loop ?? [0, DEFAULT_LEN]
-  const [editing, setEditing] = useState(false)
+  const [editing, setEditing] = useState(!!startEditing)
   const [draft, setDraft] = useState<[number, number]>(loop)
   const host = useRef<HTMLDivElement>(null)
   const player = useRef<YTPlayer>(undefined)
@@ -100,7 +100,7 @@ export default function YouTubeLoop({ v }: { v: VideoRef & { key: string } }) {
           <div className="row">
             <button className="btn sm ghost grow" onClick={() => { setVideoLoop(loopKey, undefined); setEditing(false) }}>Réinitialiser</button>
             <button className="btn sm ghost" onClick={() => setEditing(false)}>Annuler</button>
-            <button className="btn sm primary grow" onClick={() => { setVideoLoop(loopKey, draft); setEditing(false) }}>Enregistrer</button>
+            <button className="btn sm primary grow" onClick={() => { setVideoLoop(loopKey, draft); setEditing(false); onSaved?.() }}>Enregistrer</button>
           </div>
         </div>
       ) : (
@@ -111,3 +111,6 @@ export default function YouTubeLoop({ v }: { v: VideoRef & { key: string } }) {
     </div>
   )
 }
+
+/** Clé d'enregistrement d'une boucle (par vidéo). */
+export const loopKeyOf = (v: { key: string; id: string }) => `${v.key}@${v.id}`

@@ -64,7 +64,7 @@ function merge(remote: Doc) {
   const remoteNewer = remote.updatedAt > local.updatedAt
   const base = remoteNewer ? remote : local
   // Journaux par date : union des deux côtés, le plus récent gagne en cas de conflit.
-  const map = <T,>(k: 'basket' | 'weights' | 'measures' | 'food' | 'tests') => {
+  const map = <T,>(k: 'basket' | 'weights' | 'measures' | 'food' | 'tests' | 'flex') => {
     const l = (local[k] ?? {}) as Record<string, T>
     const r = (remote[k] ?? {}) as Record<string, T>
     return remoteNewer ? { ...l, ...r } : { ...r, ...l }
@@ -81,6 +81,7 @@ function merge(remote: Doc) {
     measures: map('measures'),
     food: map('food'),
     tests: map('tests'),
+    flex: map('flex'),
     levelLog: [...events.values()].sort((a, b) => a.date.localeCompare(b.date)),
     updatedAt: Math.max(local.updatedAt, remote.updatedAt),
   }

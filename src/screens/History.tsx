@@ -198,14 +198,20 @@ export function Recap({ id, onBack, fresh }: { id: string; onBack: () => void; f
         <>
           <div className="section-title">Progression suggérée</div>
           {sugg.map((g) => {
-            const applied = (s.levels[g.ex] ?? g.from) >= g.to
+            const up = g.to > g.from
+            const cur = s.levels[g.ex] ?? g.from
+            const applied = up ? cur >= g.to : cur <= g.to
             return (
               <div key={g.ex} className="card" style={{ gap: 6 }}>
                 <div style={{ fontWeight: 700 }}>{EXERCISES[g.ex].name}</div>
                 <div className="small muted">{g.reason}</div>
                 <div className="small">{levelOf(g.ex, g.from)?.label} → <b>{levelOf(g.ex, g.to)?.label}</b></div>
-                <button className={`btn sm ${applied ? '' : 'primary'}`} disabled={applied} onClick={() => { s.setLevel(g.ex, g.to); celebrate(); toast(`🆙 ${EXERCISES[g.ex].name} : niveau ${g.to + 1} débloqué`) }}>
-                  {applied ? '✓ Appliqué' : 'Passer au niveau suivant'}
+                <button className={`btn sm ${applied ? '' : 'primary'}`} disabled={applied} onClick={() => {
+                  s.setLevel(g.ex, g.to)
+                  if (up) { celebrate(); toast(`🆙 ${EXERCISES[g.ex].name} : niveau ${g.to + 1} débloqué`) }
+                  else toast(`${EXERCISES[g.ex].name} : retour au niveau ${g.to + 1}`)
+                }}>
+                  {applied ? '✓ Appliqué' : up ? 'Passer au niveau suivant' : 'Revenir au niveau précédent'}
                 </button>
               </div>
             )

@@ -60,6 +60,8 @@ export interface SyncedData {
   runs: RunLog[]
   /** Début du programme course (par défaut : 2 semaines après la muscu). */
   runStart?: string
+  /** Test de souplesse mensuel : distance doigts-sol en cm (négatif = il manque, positif = au-delà). */
+  flex?: Record<string, number>
   /** Passage des démos vidéo joué en boucle, par vidéo : [début, fin] en secondes. */
   videoLoops?: Record<string, [number, number]>
   updatedAt: number
@@ -92,6 +94,7 @@ interface State extends SyncedData {
   setMeasures: (date: string, m: Measures | undefined) => void
   setGoalWeight: (kg: number) => void
   setVideoLoop: (key: string, loop: [number, number] | undefined) => void
+  setFlex: (date: string, cm: number | undefined) => void
   setTest: (id: TestId, r: TestResult | undefined) => void
   setFood: (date: string, f: FoodLog) => void
   setRunStart: (d: string | undefined) => void
@@ -183,6 +186,12 @@ export const useStore = create<State>()(
           return { measures }
         }),
         setGoalWeight: (kg) => upd(() => ({ goalWeight: kg })),
+        setFlex: (date, cm) => upd((s) => {
+          const flex = { ...s.flex }
+          if (cm === undefined) delete flex[date]
+          else flex[date] = cm
+          return { flex }
+        }),
         setVideoLoop: (key, loop) => upd((s) => {
           const videoLoops = { ...s.videoLoops }
           if (loop) videoLoops[key] = loop
@@ -316,6 +325,6 @@ export function syncedSnapshot(s: State): SyncedData {
     startDate: s.startDate, levels: s.levels, mastered: s.mastered, timeTargets: s.timeTargets, edits: s.edits,
     overrides: s.overrides, workouts: s.workouts, basket: s.basket, settings: s.settings, push: s.push,
     weights: s.weights, measures: s.measures, goalWeight: s.goalWeight, tests: s.tests, levelLog: s.levelLog, food: s.food,
-    runs: s.runs, runStart: s.runStart, videoLoops: s.videoLoops, updatedAt: s.updatedAt,
+    runs: s.runs, runStart: s.runStart, videoLoops: s.videoLoops, flex: s.flex, updatedAt: s.updatedAt,
   }
 }

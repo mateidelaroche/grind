@@ -9,6 +9,7 @@ import { today } from './lib/program'
 import { ExerciseDetail, ExercisesList } from './screens/Exercises'
 import { HistoryScreen, Recap } from './screens/History'
 import { SessionDetail, SessionsList } from './screens/Sessions'
+import Loops from './screens/Loops'
 import Settings from './screens/Settings'
 import Today from './screens/Today'
 import Workout from './screens/Workout'
@@ -24,6 +25,7 @@ type Page =
   | { p: 'runprep'; kind: RunKind }
   | { p: 'runrecap'; id: string; fresh?: boolean }
   | { p: 'runprogram' }
+  | { p: 'loops' }
 
 const TABS: { id: Tab; label: string; icon: () => React.JSX.Element }[] = [
   { id: 'today', label: 'Aujourd’hui', icon: IconToday },
@@ -74,6 +76,7 @@ export default function App() {
   let content: React.ReactNode
   if (page?.p === 'session') content = <SessionDetail id={page.id} onBack={pop} onStart={start} onExercise={(id) => push({ p: 'exercise', id })} />
   else if (page?.p === 'exercise') content = <ExerciseDetail id={page.id} onBack={pop} />
+  else if (page?.p === 'loops') content = <Loops onBack={pop} />
   else if (page?.p === 'recap') content = <Recap id={page.id} fresh={page.fresh} onBack={pop} />
   else if (page?.p === 'food') content = <Food onBack={pop} />
   else if (page?.p === 'runprep') content = <RunPrep kind={page.kind} onBack={pop} />
@@ -89,6 +92,7 @@ export default function App() {
         onRun={(kind) => push({ p: 'runprep', kind })}
         onRunOpen={(id) => push({ p: 'runrecap', id })}
         onRunProgram={() => push({ p: 'runprogram' })}
+        onSettings={() => setTab('settings')}
         onPhotos={() => { try { sessionStorage.setItem('hist', 'corps') } catch { /* ignore */ } setTab('history') }}
       />
     )
@@ -96,7 +100,7 @@ export default function App() {
   else if (tab === 'sessions') content = <SessionsList onOpen={(id) => push({ p: 'session', id })} onRunProgram={() => push({ p: 'runprogram' })} />
   else if (tab === 'exercises') content = <ExercisesList onOpen={(id) => push({ p: 'exercise', id })} />
   else if (tab === 'history') content = <HistoryScreen onOpen={(id) => push({ p: 'recap', id })} onRunOpen={(id) => push({ p: 'runrecap', id })} onRunProgram={() => push({ p: 'runprogram' })} />
-  else content = <Settings />
+  else content = <Settings onLoops={() => push({ p: 'loops' })} />
 
   return (
     <div className="app">

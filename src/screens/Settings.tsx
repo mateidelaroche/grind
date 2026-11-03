@@ -7,7 +7,7 @@ import { connect, disconnect, pullNow, pushNow, TOKEN_URL } from '../lib/sync'
 import { useStore } from '../store'
 import type { Settings as S } from '../types'
 
-export default function Settings() {
+export default function Settings({ onLoops }: { onLoops: () => void }) {
   const s = useStore()
   const set = (p: Partial<S>) => s.setSettings(p)
   const [token, setToken] = useState('')
@@ -45,6 +45,9 @@ export default function Settings() {
             <button className={s.settings.demo !== 'anim' ? 'on' : ''} onClick={() => set({ demo: 'video' })}>Vidéo</button>
             <button className={s.settings.demo === 'anim' ? 'on' : ''} onClick={() => set({ demo: 'anim' })}>Animation</button>
           </div>
+        </SettingRow>
+        <SettingRow title="Boucles vidéo" desc={`${Object.keys(s.videoLoops ?? {}).length} réglée(s) : choisis le passage qui montre le mouvement`}>
+          <button className="btn sm" onClick={onLoops}>Régler ›</button>
         </SettingRow>
         <SettingRow title="Animations 3D" desc="Mannequin à faire tourner avec le doigt (sinon silhouette 2D)">
           <Toggle on={s.settings.anim3d} onChange={(v) => set({ anim3d: v })} />

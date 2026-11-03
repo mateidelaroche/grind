@@ -204,7 +204,8 @@ function stepsFor(sid: SessionId, phase: Step['phase'], o: BuildOpts): Step[] {
     const rounds = Math.max(...items.map((it) => effectiveSets(it.sets, o.week, routine)))
     const rest = effectiveRest(sid, block, o.edits)
     for (let r = 1; r <= rounds; r++) {
-      items.forEach((item, ii) => {
+      items.forEach((it, ii) => {
+        let item = it
         const sets = effectiveSets(item.sets, o.week, routine)
         if (r > sets) return
         const ex = EXERCISES[item.ex]
@@ -215,6 +216,10 @@ function stepsFor(sid: SessionId, phase: Step['phase'], o: BuildOpts): Step[] {
           phase, kind: 'work', ex: item.ex, item, level, label, round: r, rounds: sets,
           recKey: phase === 'main' ? `${block.id}:${ii}` : undefined,
           restPause: phase === 'main' && !!block.restPause && o.week >= 10 && o.week <= 12 && r === sets && ii < 2,
+        }
+        if (sid === 'MATIN' && item.duration) {
+          const bonus = o.week >= 7 ? 10 : o.week >= 3 ? 5 : 0
+          item = { ...item, duration: item.duration + bonus, durationLabel: item.durationLabel?.replace(/^\d+/, String(item.duration + bonus)) }
         }
         if (item.duration) {
           const duration = o.timeTargets[item.ex] ?? item.duration
@@ -257,28 +262,89 @@ export function sessionGear(sid: SessionId, o: BuildOpts) {
 // ───────────── Progression ─────────────
 export interface Suggestion { ex: string; from: number; to: number; reason: string }
 
+/**
+ * Tendance du poids sur les 28 derniers jours (kg par semaine), si au moins 3 pesées sur 10 jours ou plus.
+ * Repères prise de muscle : +0,25 à +0,5 kg/semaine.
+ */
+export function weightTrend(weights: Record<string, number>, on = today()) {
+  const pts = Object.entries(weights).filter(([d]) => d <= on && diffDays(on, d) <= 28).sort(([a], [b]) => a.localeCompare(b))
+  if (pts.length < 3 || diffDays(pts.at(-1)![0], pts[0][0]) < 10) return
+  const xs = pts.map(([d]) => diffDays(d, pts[0][0])), ys = pts.map(([, v]) => v)
+  const mx = xs.reduce((a, b) => a + b) / xs.length, my = ys.reduce((a, b) => a + b) / ys.length
+  const slope = xs.reduce((a, x, i) => a + (x - mx) * (ys[i] - my), 0) / xs.reduce((a, x) => a + (x - mx) ** 2, 0)
+  const perWeek = slope * 7
+  const verdict: 'low' | 'ok' | 'high' = perWeek < 0.2 ? 'low' : perWeek > 0.6 ? 'high' : 'ok'
+  return { perWeek, verdict, n: pts.length }
+}
+
+/** Fourchette de reps prévue pour une série enregistrée (« 8-12 / jambe » → [8, 12]), d'après sa séance. */
+export function repRange(session: SessionId, recKey: string): [number, number] | undefined {
+  const [blockId, idx] = recKey.split(':')
+  const reps = SESSIONS[session]?.blocks.find((b) => b.id === blockId)?.items[+idx]?.reps
+  const m = reps?.match(/(\d+)(?:\s*-\s*(\d+))?/)
+  if (!m) return
+  const lo = +m[1]
+  return [lo, m[2] ? +m[2] : lo]
+}
+
+type Rec = Workout['sets'][string]
+/** Toutes les séries prévues faites, chacune au moins à `n` reps. */
+const allAtLeast = (r: Rec, n: number) => r.done >= r.total && (r.reps?.length ?? 0) >= r.total && r.reps!.every((x) => x >= n)
+/** La plupart des séries sous `n` reps. */
+const mostlyBelow = (r: Rec, n: number) => (r.reps?.length ?? 0) >= 2 && r.reps!.filter((x) => x < n).length > r.reps!.length / 2
+
+/**
+ * Suggestions de niveau après une séance :
+ * ↑ haut de la fourchette atteint à chaque série deux séances de suite (ou « Facile »),
+ * ↓ sous la fourchette deux séances de suite,
+ * ↑ à défaut de reps saisies : 3 séances de suite toutes séries validées sans « Dur ».
+ */
 export function suggestions(w: Workout, history: Workout[], levels: Record<string, number>): Suggestion[] {
   const out: Suggestion[] = []
   const seen = new Set<string>()
-  for (const rec of Object.values(w.sets)) {
+  for (const [recKey, rec] of Object.entries(w.sets)) {
     if (seen.has(rec.ex)) continue
     seen.add(rec.ex)
     const ex = EXERCISES[rec.ex]
     const max = (ex.levels?.length ?? 1) - 1
     const cur = levels[rec.ex] ?? rec.level
-    if (cur >= max) continue
-    const clean = (r: { done: number; total: number; flags: string[] }) => r.done >= r.total && !r.flags.includes('hard')
-    if (rec.flags.includes('easy')) {
+    if (rec.level !== cur) continue
+    const range = repRange(w.session, recKey)
+    const past = history
+      .filter((h) => h.completed && h.id !== w.id && h.session === w.session)
+      .map((h) => h.sets[recKey])
+      .filter((r): r is Rec => !!r && r.ex === rec.ex && r.level === cur)
+    const last = past.at(-1)
+    if (cur < max && rec.flags.includes('easy')) {
       out.push({ ex: rec.ex, from: cur, to: cur + 1, reason: 'Tu l’as trouvé trop facile.' })
       continue
     }
-    const past = history
-      .filter((h) => h.completed && h.id !== w.id)
-      .map((h) => Object.values(h.sets).find((r) => r.ex === rec.ex && r.level === cur))
-      .filter(Boolean)
-      .slice(-2) as typeof rec[]
-    if (clean(rec) && past.length === 2 && past.every(clean)) {
+    if (range && rec.reps?.length) {
+      const [lo, hi] = range
+      if (cur < max && allAtLeast(rec, hi) && last && allAtLeast(last, hi)) {
+        out.push({ ex: rec.ex, from: cur, to: cur + 1, reason: `${hi} reps (haut de la fourchette) à chaque série, deux séances de suite.` })
+      } else if (cur > 0 && lo < hi && mostlyBelow(rec, lo) && last && mostlyBelow(last, lo)) {
+        out.push({ ex: rec.ex, from: cur, to: cur - 1, reason: `Moins de ${lo} reps sur la plupart des séries, deux séances de suite : reprends le niveau d’avant pour bien progresser.` })
+      }
+      continue
+    }
+    const clean = (r: Rec) => r.done >= r.total && !r.flags.includes('hard')
+    if (cur < max && clean(rec) && past.length >= 2 && past.slice(-2).every(clean)) {
       out.push({ ex: rec.ex, from: cur, to: cur + 1, reason: '3 séances de suite avec toutes les séries validées.' })
+    }
+  }
+  return out
+}
+
+/** Historique d'un exercice : par séance, meilleure série (reps ou secondes tenues) et niveau. */
+export function exerciseHistory(exId: string, workouts: Workout[]) {
+  const out: { date: string; best: number; avg?: number; reps?: number[]; level: number; timed: boolean }[] = []
+  for (const w of workouts) {
+    if (!w.completed) continue
+    for (const r of Object.values(w.sets)) {
+      if (r.ex !== exId || r.done === 0) continue
+      if (r.reps?.length) out.push({ date: w.date, best: Math.max(...r.reps), avg: r.reps.reduce((a, b) => a + b, 0) / r.reps.length, reps: r.reps, level: r.level, timed: false })
+      else if (r.best) out.push({ date: w.date, best: r.best, level: r.level, timed: true })
     }
   }
   return out

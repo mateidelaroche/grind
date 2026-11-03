@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { celebrate } from '../components/Confetti'
 import { LineChart, SERIES } from '../components/Charts'
-import { Sheet, toast } from '../components/ui'
+import { Sheet, Stepper, toast } from '../components/ui'
 import { addPhoto, deletePhoto, getPhoto, listPhotos } from '../lib/photos'
-import { diffDays, formatDate, fromISO, mondayOf, today, weekNumber } from '../lib/program'
+import { diffDays, formatDate, fromISO, mondayOf, today, weekNumber, weightTrend } from '../lib/program'
 import { holdBests, levelLabel, longestStreak, MILESTONES, recordsOfTest, TEST_IDS, testBests, TESTS } from '../lib/records'
 import { EXERCISES } from '../data/exercises'
 import { SESSIONS } from '../data/sessions'
@@ -225,8 +225,11 @@ export function BodyTab() {
           </div>
         )}
         <LineChart series={[{ name: 'Poids', color: SERIES[0], data: w.map(([x, y]) => ({ x, y })) }]} unit="kg" goal={{ y: s.goalWeight, label: `${s.goalWeight}` }} />
+        <MassAdvice />
         <WeighIn />
       </div>
+
+      <FlexCard />
 
       <div className="card">
         <div className="row between">
@@ -334,5 +337,83 @@ function FragmentRow({ label, vals, best }: { label: string; vals: (number | und
         </span>
       ))}
     </>
+  )
+}
+
+/** Prise de muscle : rythme de prise de poids sur 4 semaines et conseil simple (repère +0,25 à +0,5 kg/semaine). */
+export function MassAdvice() {
+  const weights = useStore((s) => s.weights)
+  const goal = useStore((s) => s.goalWeight)
+  const t = weightTrend(weights)
+  const last = Object.entries(weights).sort(([a], [b]) => a.localeCompare(b)).at(-1)?.[1]
+  if (!t) return <div className="small muted">📈 Rythme de prise de masse : il faut 3 pesées sur au moins 10 jours pour le calculer.</div>
+  const rate = `${t.perWeek >= 0 ? '+' : ''}${fmt(+t.perWeek.toFixed(2))} kg/semaine`
+  const weeksLeft = last && t.perWeek > 0.05 && goal > last ? Math.ceil((goal - last) / t.perWeek) : undefined
+  const tone = t.verdict === 'ok' ? 'var(--ok)' : 'var(--warn)'
+  return (
+    <div className="card" style={{ gap: 4, padding: 12, borderColor: tone }}>
+      <div style={{ fontWeight: 700 }}>
+        {t.verdict === 'ok' ? '✅' : t.verdict === 'low' ? '🍽️' : '⚠️'} {rate} <span className="small muted">(4 dernières semaines)</span>
+      </div>
+      <div className="small">
+        {t.verdict === 'low' && 'Trop lent pour prendre du muscle : ajoute environ 300 kcal par jour (un bol de céréales au lait, ou un sandwich en plus au goûter). Vise +0,25 à +0,5 kg/semaine.'}
+        {t.verdict === 'ok' && 'Bon rythme pour prendre du muscle sans trop de gras. Continue comme ça.'}
+        {t.verdict === 'high' && 'Un peu rapide : au-delà de +0,5 kg/semaine, c’est surtout du gras. Retire une collation par jour.'}
+      </div>
+      {weeksLeft !== undefined && <div className="tiny muted">À ce rythme : {goal} kg dans environ {weeksLeft} semaines.</div>}
+    </div>
+  )
+}
+
+/** Pas de test de souplesse depuis 4 semaines. */
+export const flexDue = (flex: Record<string, number> | undefined) => {
+  const last = Object.keys(flex ?? {}).sort().at(-1)
+  return !last || diffDays(today(), last) >= 28
+}
+
+export function FlexSheet({ onClose }: { onClose: () => void }) {
+  const s = useStore()
+  const d = today()
+  const prev = Object.entries(s.flex ?? {}).sort(([a], [b]) => a.localeCompare(b)).at(-1)
+  const [cm, setCm] = useState(s.flex?.[d] ?? prev?.[1] ?? -15)
+  return (
+    <Sheet onClose={onClose}>
+      <div className="ex-name">🧘 Test de souplesse</div>
+      <div className="small muted">Après tes étirements du matin. Debout, pieds joints, jambes <b>tendues</b> : penche-toi doucement, sans à-coup, bras et nuque relâchés. Mesure la distance entre le bout de tes doigts et le sol.</div>
+      <div className="small">− si tu ne touches pas le sol (−15 = il manque 15 cm), 0 = tu touches, + si tu poses les paumes plus bas qu’une marche.</div>
+      <div className="row between">
+        <span style={{ fontWeight: 650 }}>Doigts ↔ sol</span>
+        <Stepper value={cm} min={-50} max={30} step={1} onChange={setCm} format={(v) => `${v > 0 ? '+' : ''}${v} cm`} />
+      </div>
+      {prev && prev[0] !== d && <div className="small muted">Dernière fois ({shortDate(prev[0])}) : {prev[1] > 0 ? '+' : ''}{prev[1]} cm</div>}
+      <button className="btn primary block" onClick={() => {
+        s.setFlex(d, cm)
+        if (prev && cm > prev[1]) { celebrate(); toast(`🧘 +${cm - prev[1]} cm de souplesse !`) } else toast('Test enregistré')
+        onClose()
+      }}>Enregistrer</button>
+    </Sheet>
+  )
+}
+
+const NO_FLEX: Record<string, number> = {}
+
+export function FlexCard() {
+  const flex = useStore((s) => s.flex) ?? NO_FLEX
+  const [open, setOpen] = useState(false)
+  const pts = Object.entries(flex).sort(([a], [b]) => a.localeCompare(b))
+  return (
+    <div className="card">
+      <div className="row between">
+        <div>
+          <div style={{ fontWeight: 700 }}>🧘 Souplesse</div>
+          <div className="small muted">Doigts ↔ sol, jambes tendues · 1 test par mois</div>
+        </div>
+        {pts.length > 0 && <div className="big-num">{pts.at(-1)![1] > 0 ? '+' : ''}{pts.at(-1)![1]}<span className="small muted"> cm</span></div>}
+      </div>
+      {pts.length > 1 && <LineChart series={[{ name: 'Souplesse', color: SERIES[0], data: pts.map(([x, y]) => ({ x, y })) }]} unit="cm" goal={{ y: 0, label: 'sol' }} height={130} />}
+      {pts.length > 1 && <div className="small muted">{pts.at(-1)![1] - pts[0][1] >= 0 ? '+' : ''}{pts.at(-1)![1] - pts[0][1]} cm depuis le {shortDate(pts[0][0])}</div>}
+      <button className="btn block" onClick={() => setOpen(true)}>{pts.length ? 'Refaire le test' : 'Faire le test (1 min)'}</button>
+      {open && <FlexSheet onClose={() => setOpen(false)} />}
+    </div>
   )
 }

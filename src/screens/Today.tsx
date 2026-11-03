@@ -12,13 +12,13 @@ import type { RunKind } from './Run'
 import { KneeNextCard, RunTodayCard } from './RunViews'
 import { runProgress, RUN_PLAN } from '../data/running'
 import { fmtDur, fmtKm } from '../lib/gps'
-import { MeasuresSheet, monthlyDue, testDue, TestsSheet, weighDue, WeighIn } from './Body'
+import { FlexSheet, flexDue, MeasuresSheet, monthlyDue, testDue, TestsSheet, weighDue, WeighIn } from './Body'
 import DaySheet from './DaySheet'
 
 const planIcon = (p: DayPlan) => (p.type === 'session' ? '💪' : p.type === 'basket' ? '🏀' : '😴')
 
-export default function Today({ onStart, onOpenSession, onOpenWorkout, onFood, onPhotos, onRun, onRunOpen, onRunProgram }: {
-  onStart: (s: SessionId, express: boolean) => void; onOpenSession: (s: SessionId) => void; onOpenWorkout: (id: string) => void; onFood: () => void; onPhotos: () => void
+export default function Today({ onStart, onOpenSession, onOpenWorkout, onSettings, onFood, onPhotos, onRun, onRunOpen, onRunProgram }: {
+  onStart: (s: SessionId, express: boolean) => void; onOpenSession: (s: SessionId) => void; onOpenWorkout: (id: string) => void; onSettings: () => void; onFood: () => void; onPhotos: () => void
   onRun: (k: RunKind) => void; onRunOpen: (id: string) => void; onRunProgram: () => void
 }) {
   const s = useStore()
@@ -27,7 +27,7 @@ export default function Today({ onStart, onOpenSession, onOpenWorkout, onFood, o
   const phase = phaseOf(week)
   const plan = dayPlan(d, s.overrides)
   const [moving, setMoving] = useState(false)
-  const [sheet, setSheet] = useState<'tests' | 'measures'>()
+  const [sheet, setSheet] = useState<'tests' | 'measures' | 'flex'>()
   const testId = testDue(week, s.tests)
   const doneOn = (date: string) => s.workouts.filter((w) => w.date === date && w.completed && SESSIONS[w.session].kind === 'muscu')
   const doneToday = doneOn(d)
@@ -52,7 +52,8 @@ export default function Today({ onStart, onOpenSession, onOpenWorkout, onFood, o
   const morning = new Date().getHours() < 12
   const runsToday = s.runs.filter((r) => r.date === d)
   const routinesToday = s.workouts.filter((w) => w.date === d && w.completed && SESSIONS[w.session].kind === 'routine' && w.session !== 'MATIN')
-  const pendingTests = !!testId || (weighDue(s.weights) && weekday(d) === 0) || (monthlyDue(Object.keys(s.measures)) && weekday(d) <= 1)
+  const flexToDo = flexDue(s.flex) && stretchedToday
+  const pendingTests = flexToDo || !!testId || (weighDue(s.weights) && weekday(d) === 0) || (monthlyDue(Object.keys(s.measures)) && weekday(d) <= 1)
   const allDone = stretchedToday && !pendingTests
     && (plan.type !== 'session' || doneToday.length > 0)
     && (plan.type !== 'basket' || !!basket?.done)
@@ -115,6 +116,14 @@ export default function Today({ onStart, onOpenSession, onOpenWorkout, onFood, o
         <div className="muted small" style={{ textTransform: 'capitalize' }}>{formatDate(d)}</div>
         <div className="page-title">Salut Matei 👋</div>
       </div>
+
+      {/* Synchro activée mais en panne : les données récentes ne sont sauvegardées que sur le téléphone. */}
+      {s.sync.token && (s.sync.status === 'error' || (s.sync.lastSync && Date.now() - s.sync.lastSync > 3 * 864e5)) && (
+        <button className="card tap" style={{ borderColor: 'var(--warn)' }} onClick={onSettings}>
+          <div style={{ fontWeight: 700, color: 'var(--warn)' }}>⚠️ Sauvegarde cloud en panne</div>
+          <div className="small muted">{s.sync.status === 'error' ? `Erreur : ${s.sync.error ?? 'inconnue'}.` : 'Pas de synchro depuis plus de 3 jours.'} Tes dernières données ne sont que sur ce téléphone. Touche pour vérifier.</div>
+        </button>
+      )}
 
       {s.active && (
         <button className="card tap accent" onClick={() => onStart(s.active!.session, s.active!.express)}>
@@ -200,6 +209,13 @@ export default function Today({ onStart, onOpenSession, onOpenWorkout, onFood, o
 
       <KneeNextCard />
 
+      {flexToDo && (
+        <div className="card">
+          <div style={{ fontWeight: 700 }}>🧘 Test de souplesse du mois</div>
+          <div className="small muted">1 minute, juste après tes étirements : mesure la distance doigts-sol, jambes tendues. Pour voir tes progrès.</div>
+          <button className="btn block" onClick={() => setSheet('flex')}>Faire le test</button>
+        </div>
+      )}
       <KneeNextCard />
       {allDone && (
         <div className="card accent" style={{ alignItems: 'center', textAlign: 'center' }}>
@@ -307,6 +323,7 @@ export default function Today({ onStart, onOpenSession, onOpenWorkout, onFood, o
 
       {sheet === 'tests' && <TestsSheet initial={testId} onClose={() => setSheet(undefined)} />}
       {sheet === 'measures' && <MeasuresSheet onClose={() => setSheet(undefined)} />}
+      {sheet === 'flex' && <FlexSheet onClose={() => setSheet(undefined)} />}
 
       {moving && plan.type === 'session' && (
         <Sheet onClose={() => setMoving(false)}>

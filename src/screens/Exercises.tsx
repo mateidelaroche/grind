@@ -5,7 +5,8 @@ import { EXERCISES } from '../data/exercises'
 import { HowTo } from '../components/ExerciseInfo'
 import { IconBack } from '../components/icons'
 import { GearChips, SettingRow, Stepper, Toggle } from '../components/ui'
-import { animOf, gearForExercise, levelOf, programLevel, tempoOf, videoOf } from '../lib/program'
+import { animOf, exerciseHistory, formatDate, gearForExercise, levelOf, programLevel, tempoOf, videoOf } from '../lib/program'
+import { LineChart, SERIES } from '../components/Charts'
 import { useStore } from '../store'
 import { BAND_COLORS } from '../anim/Figure'
 import { SESSIONS } from '../data/sessions'
@@ -92,6 +93,8 @@ export function ExerciseDetail({ id, onBack }: { id: string; onBack: () => void 
       <GearChips gear={gearForExercise(id, lvl)} />
       <HowTo exId={id} />
 
+      <Progress id={id} />
+
       {ex.levels && ex.levels.length > 1 && (
         <>
           <div className="section-title">Niveau actuel</div>
@@ -119,5 +122,42 @@ export function ExerciseDetail({ id, onBack }: { id: string; onBack: () => void 
         )}
       </div>
     </div>
+  )
+}
+
+/** Mes progrès sur un exercice : courbe de la meilleure série et de la moyenne, changements de niveau, dernières séances. */
+function Progress({ id }: { id: string }) {
+  const workouts = useStore((s) => s.workouts)
+  const levelLog = useStore((s) => s.levelLog)
+  const hist = exerciseHistory(id, workouts)
+  if (!hist.length) return null
+  const timed = hist.at(-1)!.timed
+  const unit = timed ? 's' : 'reps'
+  const series = [
+    { name: timed ? 'Meilleur temps' : 'Meilleure série', color: SERIES[0], data: hist.map((h) => ({ x: h.date, y: h.best })) },
+    ...(timed ? [] : [{ name: 'Moyenne', color: SERIES[1], data: hist.map((h) => ({ x: h.date, y: Math.round((h.avg ?? h.best) * 10) / 10 })) }]),
+  ]
+  const ups = levelLog.filter((e) => e.ex === id)
+  const first = hist[0], last = hist.at(-1)!
+  const delta = last.level === first.level ? last.best - first.best : undefined
+  return (
+    <>
+      <div className="section-title">Mes progrès</div>
+      <div className="card" style={{ gap: 8 }}>
+        {hist.length > 1 ? <LineChart series={series} unit={unit} height={150} /> : <div className="small muted">1re séance enregistrée : la courbe apparaît dès la 2e.</div>}
+        {delta !== undefined && hist.length > 1 && (
+          <div className="small">{delta > 0 ? `📈 +${delta} ${unit} sur ta meilleure série depuis le ${formatDate(first.date).toLowerCase()}` : delta < 0 ? `📉 ${delta} ${unit} depuis le ${formatDate(first.date).toLowerCase()} : vérifie ta récupération (sommeil, repas).` : '➡️ Stable pour l’instant : vise +1 rep par série à la prochaine séance.'}</div>
+        )}
+        {ups.map((e) => <div key={e.date + e.level} className="small">🆙 {levelOf(id, e.level)?.label ?? `Niveau ${e.level + 1}`} depuis le {formatDate(e.date).toLowerCase()}</div>)}
+        <div className="stack" style={{ gap: 2 }}>
+          {hist.slice(-4).reverse().map((h, i) => (
+            <div key={i} className="row between small">
+              <span className="muted" style={{ textTransform: 'capitalize' }}>{formatDate(h.date)}</span>
+              <span>{h.reps ? h.reps.join(' · ') + ' reps' : `${h.best} s`}{levelOf(id, h.level) && EXERCISES[id].levels!.length > 1 ? <span className="muted"> · {levelOf(id, h.level)!.label}</span> : null}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
   )
 }
