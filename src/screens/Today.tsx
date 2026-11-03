@@ -43,6 +43,29 @@ export default function Today({ onStart, onOpenSession, onOpenWorkout, onFood, o
 
   const opts = { week, express: false, levels: s.levels, edits: s.edits, timeTargets: s.timeTargets }
 
+  // Étirements du matin : en haut de l'écran jusqu'à midi, puis plus bas ; série de jours d'affilée.
+  const stretchedOn = (date: string) => s.workouts.some((w) => w.date === date && w.session === 'MATIN' && w.completed)
+  const stretchedToday = stretchedOn(d)
+  let streak = 0
+  for (let k = stretchedToday ? 0 : 1; stretchedOn(addDays(d, -k)); k++) streak++
+  const morning = new Date().getHours() < 12
+  const matinCard = (
+    <div className={`card ${morning && !stretchedToday ? 'accent' : ''}`}>
+      <div className="row between">
+        <div>
+          <div style={{ fontWeight: 700 }}>🧘 Étirements du matin</div>
+          <div className="small muted">{SESSIONS.MATIN.duration} · dos, hanches, ischios, mollets, épaules</div>
+        </div>
+        {streak > 0 && <span className="badge" title="Jours d'affilée">🔥 {streak} j</span>}
+      </div>
+      {stretchedToday ? (
+        <div className="badge ok" style={{ height: 32, alignSelf: 'flex-start' }}>✅ Fait aujourd’hui</div>
+      ) : (
+        <button className={`btn block ${morning ? 'primary big' : ''}`} onClick={() => onStart('MATIN', false)}>{morning ? 'Commencer' : 'Faire mes étirements'}</button>
+      )}
+    </div>
+  )
+
   const nextSession = () => {
     for (let i = 1; i < 8; i++) {
       const date = addDays(d, i)
@@ -86,6 +109,8 @@ export default function Today({ onStart, onOpenSession, onOpenWorkout, onFood, o
         )}
         <div className="progress"><div style={{ width: `${Math.min(100, (Math.max(0, diffDays(d, s.startDate) + 1) / (PROGRAM_WEEKS * 7)) * 100)}%` }} /></div>
       </div>
+
+      {morning && !stretchedToday && matinCard}
 
       {/* À faire : tests, pesée, mensurations */}
       {testId && (
@@ -198,6 +223,8 @@ export default function Today({ onStart, onOpenSession, onOpenWorkout, onFood, o
       )}
 
       {/* Semaine */}
+      {!(morning && !stretchedToday) && matinCard}
+
       <div className="row between week-head">
         <button className="icon-btn" aria-label="Semaine précédente" onClick={() => setWeekOff(weekOff - 1)}>‹</button>
         <button className="grow center" onClick={() => setWeekOff(0)}>

@@ -423,6 +423,15 @@ const list: Exercise[] = [
   { id: 'st-quad', name: 'Étirement quadriceps', muscles: 'Quadriceps', equipment: ['mur'], anim: 'st-quad', perSide: 'jambe', execution: 'Debout, main au mur, attrape ta cheville et ramène le talon vers la fesse.' },
   { id: 'st-hams', name: 'Étirement ischios', muscles: 'Ischio-jambiers', equipment: [], anim: 'st-hams', execution: 'Assis, jambes tendues, penche-toi en avant dos droit.' },
   { id: 'st-hip', name: 'Fente basse', muscles: 'Fléchisseurs de hanche', equipment: [], anim: 'st-hip', perSide: 'jambe', execution: 'Genou arrière au sol, avance le bassin doucement.' },
+
+  // ───────────── ÉTIREMENTS DU MATIN ─────────────
+  { id: 'st-knees', name: 'Genoux poitrine', muscles: 'Bas du dos', equipment: [], anim: 'st-knees', execution: 'Sur le dos, ramène les deux genoux vers la poitrine avec les mains sur les tibias. Relâche les épaules et le bas du dos, respire lentement par le ventre.' },
+  { id: 'st-fig4', name: 'Figure 4 allongé', muscles: 'Fessiers, hanches', equipment: [], anim: 'st-fig4', perSide: 'jambe', execution: 'Sur le dos, pose la cheville sur le genou opposé (la jambe forme un 4). Attrape l’arrière de la cuisse du bas et tire-la doucement vers toi : ça étire la fesse de la jambe croisée.', errors: 'Décoller la tête ou forcer sur le genou croisé.' },
+  { id: 'st-squat', name: 'Squat profond tenu', muscles: 'Chevilles, hanches, adducteurs', equipment: [], anim: 'st-squat', execution: 'Pieds un peu plus larges que les hanches, pointes légèrement ouvertes : descends le plus bas possible talons au sol, mains jointes, coudes qui poussent les genoux vers l’extérieur. Tiens en respirant.', knee: 'Descends seulement jusqu’où c’est confortable ; si les talons décollent, glisse un livre dessous.' },
+  { id: 'st-calf', name: 'Mollets au mur', muscles: 'Mollets, chevilles', equipment: ['mur'], anim: 'st-calf', perSide: 'jambe', execution: 'Mains au mur, une jambe loin derrière, tendue, talon bien au sol. Plie le genou avant et avance le bassin jusqu’à sentir l’étirement dans le mollet arrière.' },
+  { id: 'st-fold', name: 'Enroulé debout', muscles: 'Ischios, bas du dos', equipment: [], anim: 'st-fold', execution: 'Debout, genoux légèrement fléchis : laisse le haut du corps pendre vers le sol, bras et nuque relâchés. À chaque expiration, descends un peu plus. Remonte lentement vertèbre par vertèbre.', errors: 'Bloquer les genoux ou forcer en rebondissant.' },
+  { id: 'st-side', name: 'Inclinaison latérale', muscles: 'Flancs, grand dorsal', equipment: [], anim: 'st-side', perSide: 'côté', execution: 'Debout, un bras tendu au-dessus de la tête : penche le buste du côté opposé sans te pencher en avant, comme entre deux vitres.' },
+  { id: 'st-cross', name: 'Bras croisé', muscles: 'Épaule arrière, haut du dos', equipment: [], anim: 'st-cross', perSide: 'côté', execution: 'Passe un bras tendu devant la poitrine et tiens-le juste au-dessus du coude avec l’autre main. Épaule basse, loin de l’oreille.' },
 ]
 
 export const EXERCISES: Record<string, Exercise> = Object.fromEntries(list.map((e) => [e.id, e]))

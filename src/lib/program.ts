@@ -210,7 +210,7 @@ function stepsFor(sid: SessionId, phase: Step['phase'], o: BuildOpts): Step[] {
         }
         if (item.duration) {
           const duration = o.timeTargets[item.ex] ?? item.duration
-          const auto = phase === 'cooldown'
+          const auto = phase === 'cooldown' || sid === 'MATIN'
           if (ex.perSide) {
             steps.push({ ...base, key: base.key + ':g', side: 'gauche', duration, autoStart: auto })
             steps.push({ ...base, key: base.key + ':d', side: 'droite', duration, autoStart: true })

@@ -107,6 +107,14 @@ const ANIM_MODS: Record<string, (j: Joints3, pose: Pose) => void> = {
       j[`elbow${side}`] = [j[`elbow${side}`][0], j[`elbow${side}`][1], sg * 13]
     }
   },
+  fig4: (j) => {
+    // Jambe croisée : la cheville se pose sur le genou d'en face, le genou s'ouvre vers l'extérieur.
+    const ankle = add3(j.kneeF, [2, 3, 5])
+    const out = norm3(add3(mul3(norm3(sub3(ankle, j.hipN)), 1), [0, 0.35, 1.1]))
+    j.kneeN = add3(j.hipN, mul3(out, L.th))
+    j.ankleN = ankle
+    j.toeN = add3(ankle, mul3(norm3(sub3(ankle, j.kneeN)), L.foot * 0.8))
+  },
   pike: (j) => {
     for (const side of ['N', 'F'] as const) {
       const sg = side === 'N' ? 1 : -1

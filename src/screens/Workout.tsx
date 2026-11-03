@@ -220,7 +220,9 @@ function Guided({ steps, active, onValidate, onUnvalidate, onFinish }: {
     return <RestTimer seconds={st.rest!} resetKey={st.key} onDone={() => go(i + 1)} next={upcoming(steps, i + 1)} feedback={feedback} nav={{ prev: nav.prev }} />
   }
 
-  const sameRoundNext = steps[i + 1]?.kind === 'work' && steps[i + 1].phase === st.phase && steps[i + 1].label?.[0] === st.label?.[0] && steps[i + 1].label !== st.label
+  // Superset : l'exercice suivant est un autre exercice du même bloc (clé « phase:séance:bloc:exo:tour »).
+  const blockOf = (x: Step) => x.key.split(':').slice(0, 3).join(':')
+  const sameRoundNext = steps[i + 1]?.kind === 'work' && blockOf(steps[i + 1]) === blockOf(st) && steps[i + 1].ex !== st.ex
   return (
     <WorkStep
       key={st.key}

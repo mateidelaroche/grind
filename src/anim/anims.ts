@@ -480,6 +480,58 @@ const stHip = breathe(
   { p: [94, 115], t: -84 },
 )
 
+// ───────────── ÉTIREMENTS DU MATIN ─────────────
+/** Sur le dos, genoux ramenés vers la poitrine, mains sur les tibias. */
+const stKnees = breathe(
+  backLying({ lN: { a: [-146, 14] }, lF: { a: [-144, 16] }, fN: -40, fF: -40, aN: { ik: { j: 'kneeN', o: [10, 6] } }, aF: { ik: { j: 'kneeF', o: [11, 7] } }, h: 176 }),
+  { lN: { a: [-154, 8] }, lF: { a: [-152, 10] } },
+)
+/** Figure 4 : sur le dos, cheville posée sur le genou opposé, mains derrière la cuisse qui tire. */
+const stFig4: AnimDef = { mod: 'fig4', ...breathe(
+  backLying({
+    lF: { a: [-118, -4] }, fF: -70,
+    // Jambe croisée : genou ouvert vers l'extérieur (raccourcie en vue de profil), cheville sur le genou d'en face.
+    lN: { a: [-65, -159], s: 0.66 }, fN: -10,
+    aN: { ik: { j: 'kneeF', o: [-10, 3] } }, aF: { ik: { j: 'kneeF', o: [-9, 4] } }, h: 176,
+  }),
+  { lF: { a: [-126, -10] } },
+) }
+/** Squat profond tenu : talons au sol, coudes poussent les genoux vers l'extérieur, mains jointes. */
+const stSquat = breathe(
+  stand(98, { p: [86, 124], t: -66, h: -84, lN: { ik: [101, FL] }, lF: { ik: [97, FL] }, aN: { ik: { j: 'chest', o: [15, 7] } }, aF: { ik: { j: 'chest', o: [15, 8] } } }),
+  { p: [86, 127], t: -70 },
+)
+/** Mollets au mur : mains au mur, jambe arrière tendue talon au sol, genou avant fléchi. */
+const stCalf: AnimDef = {
+  scene: [{ k: 'wall', x: 146 }],
+  marks: [{ d: [76, 146], note: 'talon arrière → mur' }],
+  ...breathe(
+    stand(100, { p: [100, 77], t: -76, lN: { ik: [124, FL] }, lF: { ik: [72, FL] }, fF: 0, aN: { ik: [144, 52] }, aF: { ik: [143, 54] } }),
+    { p: [104, 78], t: -72 },
+  ),
+}
+/** Enroulé debout : genoux souples, le haut du corps pend vers le sol, nuque relâchée. */
+const stFold = breathe(
+  { p: [98, 78], t: 98, h: 96, aN: { a: [96, 96] }, aF: { a: [98, 98] }, lN: { ik: [104, FL] }, lF: { ik: [102, FL] } },
+  { t: 104, h: 102, aN: { a: [100, 100] }, aF: { a: [101, 101] } },
+)
+/** Inclinaison latérale (vue de face) : un bras au-dessus de la tête, le buste penche de l'autre côté. */
+const stSide: AnimDef = {
+  view: 'front',
+  ...breathe(
+    stand(100, { t: -100, h: -104, aN: { a: [-112, -150] }, aF: { a: [100, 96] }, lN: { ik: [106, FL] }, lF: { ik: [94, FL] } }),
+    { t: -106, h: -110, aN: { a: [-118, -158] } },
+  ),
+}
+/** Bras croisé (vue de face) : le bras passe devant la poitrine, l'autre main le tient au-dessus du coude. */
+const stCross: AnimDef = {
+  view: 'front',
+  ...breathe(
+    stand(100, { aN: { a: [176, 178], s: 0.8 }, aF: { ik: { j: 'elbowN', o: [-2, 2] } }, lN: { ik: [106, FL] }, lF: { ik: [94, FL] } }),
+    { aN: { a: [172, 176], s: 0.82 } },
+  ),
+}
+
 // Silhouettes guides pour les photos de progression
 const guideFace: AnimDef = {
   view: 'front', noFloor: true, dur: [1],
@@ -531,6 +583,7 @@ export const ANIMS: Record<string, AnimDef> = {
   'glute-bridge': gluteBridge, clamshell, tke, 'tib-raise': tibRaise, 'wall-sit': wallSit, 'bw-squat': bwSquat,
   'shadow-box': shadowBox, 'step-jack': stepJack, climber,
   'st-pecs': stPecs, 'st-child': stChild, 'st-quad': stQuad, 'st-hams': stHams, 'st-hip': stHip,
+  'st-knees': stKnees, 'st-fig4': stFig4, 'st-squat': stSquat, 'st-calf': stCalf, 'st-fold': stFold, 'st-side': stSide, 'st-cross': stCross,
 }
 
 // ───────────── Matériel selon le niveau ─────────────

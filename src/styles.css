@@ -79,7 +79,7 @@ a.btn { text-decoration: none; color: var(--text); }
 
 .chip { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); font-size: 13px; color: var(--text-2); white-space: nowrap; }
 .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; }
-.badge { display: inline-flex; align-items: center; height: 24px; padding: 0 8px; border-radius: 7px; background: var(--accent); color: #dbeafe; font-size: 12px; font-weight: 800; letter-spacing: 0.02em; }
+.badge { display: inline-flex; align-items: center; white-space: nowrap; flex: none; height: 24px; padding: 0 8px; border-radius: 7px; background: var(--accent); color: #dbeafe; font-size: 12px; font-weight: 800; letter-spacing: 0.02em; }
 .badge.warn { background: #422006; color: #fcd34d; }
 .badge.ok { background: #052e16; color: #86efac; }
 

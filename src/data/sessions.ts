@@ -163,5 +163,29 @@ const BONUS: Session = {
   ],
 }
 
-export const SESSIONS: Record<SessionId, Session> = { A, B, C, GENOUX, BONUS, WARMUP, COOLDOWN }
+/** Étirements du matin : souplesse (ischios, bas du dos, hanches, chevilles, épaules), du sol vers la position debout. */
+const MATIN: Session = {
+  id: 'MATIN',
+  name: 'Étirements du matin',
+  subtitle: 'Souplesse : dos, hanches, ischios, mollets, épaules',
+  kind: 'routine',
+  warmup: 'none',
+  cooldown: false,
+  duration: '~9 min',
+  blocks: [
+    { id: 'M1', rest: 0, items: [{ ex: 'cat-cow', sets: 1, duration: 45, durationLabel: '45 s' }] },
+    { id: 'M2', rest: 0, items: [{ ex: 'st-child', sets: 1, duration: 40, durationLabel: '40 s' }] },
+    { id: 'M3', rest: 0, items: [{ ex: 'st-knees', sets: 1, duration: 40, durationLabel: '40 s' }] },
+    { id: 'M4', rest: 0, items: [{ ex: 'st-fig4', sets: 1, duration: 30, durationLabel: '30 s / jambe' }] },
+    { id: 'M5', rest: 0, items: [{ ex: 'st-hams', sets: 1, duration: 40, durationLabel: '40 s' }] },
+    { id: 'M6', rest: 0, items: [{ ex: 'st-hip', sets: 1, duration: 30, durationLabel: '30 s / jambe' }] },
+    { id: 'M7', rest: 0, items: [{ ex: 'st-squat', sets: 1, duration: 40, durationLabel: '40 s' }] },
+    { id: 'M8', rest: 0, items: [{ ex: 'st-calf', sets: 1, duration: 30, durationLabel: '30 s / jambe' }] },
+    { id: 'M9', rest: 0, items: [{ ex: 'st-fold', sets: 1, duration: 40, durationLabel: '40 s' }] },
+    { id: 'M10', rest: 0, items: [{ ex: 'st-side', sets: 1, duration: 20, durationLabel: '20 s / côté' }] },
+    { id: 'M11', rest: 0, items: [{ ex: 'st-cross', sets: 1, duration: 20, durationLabel: '20 s / bras' }] },
+  ],
+}
+
+export const SESSIONS: Record<SessionId, Session> = { A, B, C, GENOUX, BONUS, WARMUP, COOLDOWN, MATIN }
 export const MAIN_SESSIONS: SessionId[] = ['A', 'B', 'C']

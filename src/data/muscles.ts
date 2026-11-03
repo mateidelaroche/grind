@@ -80,6 +80,13 @@ export const EX_MUSCLES: Record<string, Work> = {
   'st-quad': w(['quadriceps'], ['flechisseurs']),
   'st-hams': w(['ischios'], ['mollets']),
   'st-hip': w(['flechisseurs'], ['quadriceps']),
+  'st-knees': w(['lombaires'], ['fessiers']),
+  'st-fig4': w(['fessiers', 'moyenFessier'], ['lombaires']),
+  'st-squat': w(['adducteurs', 'mollets'], ['fessiers', 'tibias']),
+  'st-calf': w(['mollets']),
+  'st-fold': w(['ischios', 'lombaires'], ['mollets']),
+  'st-side': w(['obliques', 'grandDorsal']),
+  'st-cross': w(['deltArr'], ['milieuDos']),
 }
 
 const NONE: Work = { p: [], s: [], st: [] }

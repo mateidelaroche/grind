@@ -20,6 +20,7 @@ const CATS: [string, string[]][] = [
   ['Échauffement & genoux', ['march', 'arm-circles', 'cat-cow', 'scap-pushup', 'inchworm', 'glute-bridge', 'clamshell', 'tke', 'tib-raise', 'wall-sit', 'bw-squat']],
   ['Cardio en chambre', ['shadow-box', 'step-jack', 'climber']],
   ['Étirements', ['st-pecs', 'st-child', 'st-quad', 'st-hams', 'st-hip']],
+  ['Étirements du matin', ['st-knees', 'st-fig4', 'st-squat', 'st-calf', 'st-fold', 'st-side', 'st-cross']],
 ]
 
 /** Minuscules sans accents, pour chercher « elevation » ou « épaule » indifféremment. */
