@@ -40,6 +40,12 @@ export default function Settings() {
             <button className={s.settings.view === 'list' ? 'on' : ''} onClick={() => set({ view: 'list' })}>Liste</button>
           </div>
         </SettingRow>
+        <SettingRow title="Démo des exercices" desc={s.settings.demo === 'anim' ? 'Animation avec repères chiffrés et tempo' : 'Vidéo YouTube (animation si hors ligne)'}>
+          <div className="seg" style={{ width: 168 }}>
+            <button className={s.settings.demo !== 'anim' ? 'on' : ''} onClick={() => set({ demo: 'video' })}>Vidéo</button>
+            <button className={s.settings.demo === 'anim' ? 'on' : ''} onClick={() => set({ demo: 'anim' })}>Animation</button>
+          </div>
+        </SettingRow>
         <SettingRow title="Animations 3D" desc="Mannequin à faire tourner avec le doigt (sinon silhouette 2D)">
           <Toggle on={s.settings.anim3d} onChange={(v) => set({ anim3d: v })} />
         </SettingRow>

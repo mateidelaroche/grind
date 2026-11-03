@@ -9,7 +9,7 @@ import { workOf } from '../data/muscles'
 import { IconBack, IconCheck, IconClose, IconGuided, IconInfo, IconList, IconMetro, IconNext, IconPause, IconPlay } from '../components/icons'
 import { fmtTime, GearChips, Sheet } from '../components/ui'
 import { beep, keepAwake, say, unlockAudio } from '../lib/audio'
-import { animOf, buildSteps, gearForExercise, lastReps, levelOf, sessionGear, today, weekNumber, type Step } from '../lib/program'
+import { animOf, buildSteps, gearForExercise, lastReps, levelOf, sessionGear, today, videoOf, weekNumber, type Step } from '../lib/program'
 import { useCountdown, useMetronome } from '../lib/timer'
 import { useStore, type ActiveSession } from '../store'
 
@@ -170,7 +170,7 @@ function HowToSheet({ exId, level, onClose, demo, tempo }: { exId: string; level
     <Sheet onClose={onClose}>
       <div className="ex-name">{ex.name}</div>
       {lvl && ex.levels!.length > 1 && <div className="small muted" style={{ marginTop: -8 }}>{lvl.label}</div>}
-      {demo && <Demo anim={animOf(exId, level)} band={lvl?.band} tempo={tempo} />}
+      {demo && <Demo anim={animOf(exId, level)} band={lvl?.band} tempo={tempo} video={videoOf(exId, level)} />}
       <GearChips gear={gearForExercise(exId, level)} />
       <HowTo exId={exId} />
       <MuscleMap work={workOf(exId)} compact />
@@ -278,7 +278,7 @@ function WorkStep({ st, active, done, nav, superset, onValidate, onUnvalidate }:
         {superset && <div className="small" style={{ color: 'var(--warn)' }}>⚡ Enchaîne <b>sans repos</b> avec {superset}</div>}
       </div>
 
-      <div className="wk-fig"><Demo anim={animOf(st.ex!, level)} band={lvl?.band} tempo={st.item?.tempo} /></div>
+      <div className="wk-fig"><Demo anim={animOf(st.ex!, level)} band={lvl?.band} tempo={st.item?.tempo} video={videoOf(st.ex!, level)} /></div>
 
       <div className="row wrap" style={{ gap: 8 }}>
         <button className="btn sm" onClick={() => setInfo(true)}><IconInfo /> Consignes</button>

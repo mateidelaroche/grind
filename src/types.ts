@@ -144,6 +144,8 @@ export interface Settings {
   view: 'guided' | 'list'
   reminders: boolean
   anim3d: boolean
+  /** Démo affichée par défaut : vidéo YouTube (si en ligne) ou animation. */
+  demo: 'video' | 'anim'
 }
 
 export interface ItemEdit {

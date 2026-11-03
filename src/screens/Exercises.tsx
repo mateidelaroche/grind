@@ -5,7 +5,7 @@ import { EXERCISES } from '../data/exercises'
 import { HowTo } from '../components/ExerciseInfo'
 import { IconBack } from '../components/icons'
 import { GearChips, SettingRow, Stepper, Toggle } from '../components/ui'
-import { animOf, gearForExercise, levelOf, programLevel, tempoOf } from '../lib/program'
+import { animOf, gearForExercise, levelOf, programLevel, tempoOf, videoOf } from '../lib/program'
 import { useStore } from '../store'
 import { BAND_COLORS } from '../anim/Figure'
 import { SESSIONS } from '../data/sessions'
@@ -86,7 +86,7 @@ export function ExerciseDetail({ id, onBack }: { id: string; onBack: () => void 
         <button className="icon-btn" onClick={onBack} aria-label="Retour"><IconBack /></button>
         <div className="grow ex-name">{ex.name}</div>
       </div>
-      <Demo anim={animOf(id, lvl)} band={level?.band} tempo={tempoOf(id)} />
+      <Demo anim={animOf(id, lvl)} band={level?.band} tempo={tempoOf(id)} video={videoOf(id, lvl)} />
       <div className="small muted">{ex.muscles}</div>
       <MuscleMap work={workOf(id)} />
       <GearChips gear={gearForExercise(id, lvl)} />

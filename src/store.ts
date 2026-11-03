@@ -118,7 +118,7 @@ interface State extends SyncedData {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
-  sounds: true, voice: false, metronome: false, coach: true, wakeLock: true, view: 'guided', reminders: false, anim3d: true,
+  sounds: true, voice: false, metronome: false, coach: true, wakeLock: true, view: 'guided', reminders: false, anim3d: true, demo: 'video',
 }
 
 const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36)

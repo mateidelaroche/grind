@@ -291,3 +291,11 @@ button.day:active { background: var(--surface-2); }
 .search .input { padding-right: 46px; -webkit-appearance: none; appearance: none; }
 .search input::-webkit-search-cancel-button { display: none; }
 .search-clear { position: absolute; right: 3px; top: 3px; width: 44px; height: 44px; font-size: 24px; color: var(--text-2); }
+
+/* ───────────── Démo vidéo ───────────── */
+.demo { display: flex; flex-direction: column; gap: 6px; }
+.video-frame { border: 0; background: #000; aspect-ratio: 16 / 9; }
+.demo-bar { gap: 8px; }
+.demo-switch { width: 190px; flex: none; padding: 3px; }
+.demo-switch button { height: 34px; font-size: 13px; }
+.wk-fig .video-frame { height: auto; aspect-ratio: 16 / 9; max-height: clamp(150px, 27dvh, 290px); }

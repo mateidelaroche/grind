@@ -2,6 +2,7 @@ import { EXERCISES } from '../data/exercises'
 import { gearAnim } from '../anim/anims'
 import { RUN_DAYS } from '../data/running'
 import { SESSIONS } from '../data/sessions'
+import { VIDEOS, type VideoRef } from '../data/videos'
 import type { Band, Block, DayPlan, Equip, Item, ItemEdit, Level, Sac, SessionId, Workout } from '../types'
 
 // ───────────── Dates (heure locale) ─────────────
@@ -97,6 +98,12 @@ export const levelOf = (exId: string, lvl: number): Level | undefined => EXERCIS
 /** Tempo prescrit pour un exercice dans sa séance principale (ex. « 3-1-1 »). */
 export function tempoOf(exId: string): string | undefined {
   for (const ses of Object.values(SESSIONS)) for (const b of ses.blocks) for (const it of b.items) if (it.ex === exId && it.tempo) return it.tempo
+}
+
+/** Démo YouTube d'un exercice ; un niveau qui change le mouvement (bulgare, unilatéral) a la sienne. */
+export function videoOf(exId: string, lvl: number): VideoRef | undefined {
+  const a = levelOf(exId, lvl)?.anim
+  return (a && VIDEOS[a]) || VIDEOS[exId]
 }
 
 export const animOf = (exId: string, lvl: number) => {
