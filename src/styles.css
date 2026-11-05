@@ -280,6 +280,9 @@ button.day:active { background: var(--surface-2); }
 .wk.rest .ring { width: min(66vw, 32dvh, 270px); }
 .wk.rest .ring .val { font-size: 92px; }
 .next-up { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 14px; background: var(--surface); border: 1px solid var(--border); width: 100%; }
+.variant-mini { flex: none; flex-direction: column; gap: 0; height: auto; align-self: stretch; padding: 0 8px; font-size: 18px; line-height: 1.1; }
+.variant-mini small { font-size: 11px; }
+.no-anim { display: grid; place-items: center; aspect-ratio: 4 / 3; color: var(--text-2); font-size: 16px; }
 .next-up.tap:active { background: var(--surface-2); }
 .next-up > svg { width: 22px; height: 22px; color: var(--text-2); flex: none; }
 .chip.tap { height: 40px; padding: 0 14px; font-size: 14px; }

@@ -1,9 +1,10 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware'
 import { del, get, set } from 'idb-keyval'
-import { addDays, DEFAULT_START, OLD_START, programLevel, today } from './lib/program'
+import { addDays, DEFAULT_START, OLD_START, programLevel, today, weekNumber } from './lib/program'
+import { autoSwaps, type SwapChoice } from './lib/variants'
 import type {
-  BasketLog, FoodLog, ItemEdit, LevelEvent, Measures, RunLog, RunSplit, RunStep, SessionId, SetRecord, Settings, TestId, TestResult, Workout,
+  BasketLog, FoodLog, ItemEdit, LevelEvent, Measures, RunLog, RunSplit, RunStep, SessionId, SetRecord, Settings, Swap, TestId, TestResult, Unavailable, Workout,
 } from './types'
 
 const idbStorage: StateStorage = {
@@ -19,6 +20,10 @@ export interface ActiveSession {
   stepIndex: number
   /** Clés d'étapes validées. */
   done: Record<string, true>
+  /** Exercices remplacés pour cette séance, par emplacement. */
+  swaps?: Record<string, Swap[]>
+  /** Variantes prévues à effacer une fois la séance terminée. */
+  plannedUsed?: string[]
 }
 
 /** Sortie en cours (persistée pour survivre à un redémarrage de l'appli, jamais synchronisée). */
@@ -64,6 +69,10 @@ export interface SyncedData {
   flex?: Record<string, number>
   /** Passage des démos vidéo joué en boucle, par vidéo : [début, fin] en secondes. */
   videoLoops?: Record<string, [number, number]>
+  /** Matériel indisponible : tout ce qui en dépend est remplacé au démarrage des séances. */
+  unavailable?: Unavailable[]
+  /** Variantes choisies depuis les fiches pour la prochaine séance, par exercice remplacé. */
+  planned?: Record<string, SwapChoice>
   updatedAt: number
 }
 
@@ -94,6 +103,10 @@ interface State extends SyncedData {
   setMeasures: (date: string, m: Measures | undefined) => void
   setGoalWeight: (kg: number) => void
   setVideoLoop: (key: string, loop: [number, number] | undefined) => void
+  setUnavailable: (u: Unavailable[]) => void
+  setPlanned: (ex: string, v: SwapChoice | undefined) => void
+  /** Remplace un exercice de la séance ; `totals` : nombre de séries de chaque enregistrement après ce changement. */
+  setSwaps: (slot: string, list: Swap[], totals: Record<string, number>) => void
   setFlex: (date: string, cm: number | undefined) => void
   setTest: (id: TestId, r: TestResult | undefined) => void
   setFood: (date: string, f: FoodLog) => void
@@ -198,6 +211,26 @@ export const useStore = create<State>()(
           else delete videoLoops[key]
           return { videoLoops }
         }),
+        setUnavailable: (u) => upd(() => ({ unavailable: u })),
+        setPlanned: (ex, v) => upd((s) => {
+          const planned = { ...s.planned }
+          if (v) planned[ex] = v
+          else delete planned[ex]
+          return { planned }
+        }),
+        setSwaps: (slot, list, totals) => {
+          setS((s) => {
+            if (!s.active) return {}
+            const swaps = { ...s.active.swaps }
+            if (list.length) swaps[slot] = list
+            else delete swaps[slot]
+            return { active: { ...s.active, swaps } }
+          })
+          updWorkout((w) => ({
+            ...w,
+            sets: Object.fromEntries(Object.entries(w.sets).map(([k, r]) => [k, totals[k] ? { ...r, total: totals[k] } : r])),
+          }))
+        },
         setTest: (id, r) => upd((s) => {
           const tests = { ...s.tests }
           if (r) tests[id] = r
@@ -225,7 +258,11 @@ export const useStore = create<State>()(
         startWorkout: (session, express, date) => {
           const id = uid()
           const w: Workout = { id, date, session, express, startedAt: Date.now(), sets: {}, completed: false }
-          upd((s) => ({ workouts: [...s.workouts, w], active: { workoutId: id, session, express, stepIndex: 0, done: {} } }))
+          upd((s) => {
+            const opts = { week: weekNumber(today(), s.startDate), express, levels: s.levels, edits: s.edits, timeTargets: s.timeTargets }
+            const { swaps, used } = autoSwaps(session, opts, { levels: s.levels, unavailable: s.unavailable ?? [] }, s.planned ?? {})
+            return { workouts: [...s.workouts, w], active: { workoutId: id, session, express, stepIndex: 0, done: {}, swaps, plannedUsed: used } }
+          })
         },
         setStep: (i) => setS((s) => (s.active ? { active: { ...s.active, stepIndex: i } } : {})),
         markStep: (key, done) => setS((s) => {
@@ -253,7 +290,10 @@ export const useStore = create<State>()(
           const a = getS().active
           if (!a) return
           updWorkout((w) => ({ ...w, endedAt: Date.now(), completed: true }))
-          setS({ active: undefined })
+          upd((s) => ({
+            active: undefined,
+            planned: Object.fromEntries(Object.entries(s.planned ?? {}).filter(([ex]) => !a.plannedUsed?.includes(ex))),
+          }))
           return a.workoutId
         },
         abandonWorkout: () => {
@@ -325,6 +365,6 @@ export function syncedSnapshot(s: State): SyncedData {
     startDate: s.startDate, levels: s.levels, mastered: s.mastered, timeTargets: s.timeTargets, edits: s.edits,
     overrides: s.overrides, workouts: s.workouts, basket: s.basket, settings: s.settings, push: s.push,
     weights: s.weights, measures: s.measures, goalWeight: s.goalWeight, tests: s.tests, levelLog: s.levelLog, food: s.food,
-    runs: s.runs, runStart: s.runStart, videoLoops: s.videoLoops, flex: s.flex, updatedAt: s.updatedAt,
+    runs: s.runs, runStart: s.runStart, videoLoops: s.videoLoops, flex: s.flex, unavailable: s.unavailable, planned: s.planned, updatedAt: s.updatedAt,
   }
 }

@@ -4,8 +4,9 @@ import { exportCSV, exportJSON, importJSON } from '../lib/export'
 import { disableReminders, enableReminders, isStandalone, testNotification } from '../lib/notify'
 import { formatDate, runStartOf } from '../lib/program'
 import { connect, disconnect, pullNow, pushNow, TOKEN_URL } from '../lib/sync'
+import { UNAVAILABLE_LABEL } from '../lib/variants'
 import { useStore } from '../store'
-import type { Settings as S } from '../types'
+import type { Settings as S, Unavailable } from '../types'
 
 export default function Settings({ onLoops }: { onLoops: () => void }) {
   const s = useStore()
@@ -69,6 +70,21 @@ export default function Settings({ onLoops }: { onLoops: () => void }) {
         </SettingRow>
       </div>
       <div className="small muted">💡 Si tu n’entends pas les bips : vérifie que ton iPhone n’est pas en mode silencieux.</div>
+
+      <div className="section-title">Matériel indisponible</div>
+      <div className="card" style={{ gap: 8 }}>
+        <div className="small muted">Coche ce qui est cassé ou absent : les exercices concernés sont remplacés au début de chaque séance, jusqu’à ce que tu décoches.</div>
+        <div className="row wrap" style={{ gap: 6 }}>
+          {(Object.keys(UNAVAILABLE_LABEL) as Unavailable[]).map((k) => {
+            const on = s.unavailable?.includes(k) ?? false
+            return (
+              <button key={k} className={`chip tap ${on ? 'on' : ''}`} aria-pressed={on} onClick={() => s.setUnavailable(on ? s.unavailable!.filter((x) => x !== k) : [...(s.unavailable ?? []), k])}>
+                {on ? '✕ ' : ''}{UNAVAILABLE_LABEL[k]}
+              </button>
+            )
+          })}
+        </div>
+      </div>
 
       <div className="section-title">Rappels</div>
       <div className="card" style={{ padding: '4px 16px', gap: 0 }}>

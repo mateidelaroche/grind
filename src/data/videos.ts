@@ -68,5 +68,10 @@ export const VIDEOS: Record<string, VideoRef> = {
   "st-fold": { id: "Y42pe9JuZMQ", channel: "Yoga 15 with Abi", title: "Ragdoll" },
   "st-side": { id: "fHyCshP7U1Y", channel: "Leap Fitness", title: "How to Do：STANDING SIDE BEND" },
   "st-cross": { id: "uNmWSg705JA", channel: "BluePhoenix Fitness", title: "How To Do A Cross Body Shoulder Stretch | BluePhoenixFitness.com" },
+  "lat-raise-sac": { id: "_-DFUa2HVAc", channel: "Embody Health & Fitness", title: "Backpack Single Arm Lateral Raise" },
+  "prone-t": { id: "SSxccO3Y0Ms", channel: "Ethos Performance Group", title: "Prone T Raise" },
+  "ham-bridge": { id: "vu06oKYEwdY", channel: "Elevated Athlete Development", title: "Hamstring Bridge (On Heels)" },
+  "calf-floor": { id: "n-5T_oYc1oU", channel: "Luke Selway | Strength Coaching Online", title: "How to do Standing Calf Raises" },
+  "slr": { id: "zo2pqw794B0", channel: "[P]rehab", title: "Straight Leg Raise - Knee Rehab" },
   "pull-apart-warm": { id: "smSSXITNpCI", channel: "Rogue Fitness", title: "How To Do Band Pull Aparts" },
 }

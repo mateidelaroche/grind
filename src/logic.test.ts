@@ -6,7 +6,9 @@ import { EXERCISES } from './data/exercises'
 import { SESSIONS } from './data/sessions'
 import { VIDEOS } from './data/videos'
 import { buildSteps, dayPlan, lastReps, repRange, suggestions, weightTrend } from './lib/program'
-import type { SessionId, SetRecord, Workout } from './types'
+import { VARIANTS } from './data/variants'
+import { autoSwaps, clashes, optionsFor, problemsFor, shiftReps } from './lib/variants'
+import type { SessionId, SetRecord, Swap, Workout } from './types'
 
 const opts = (week: number) => ({ week, express: false, levels: {}, edits: {}, timeTargets: {} })
 const workout = (id: string, date: string, sets: Record<string, Partial<SetRecord>>, session: SessionId = 'A'): Workout => ({
@@ -18,7 +20,7 @@ describe('données', () => {
   it('chaque exercice des séances existe et a une animation', () => {
     for (const ses of Object.values(SESSIONS)) for (const b of ses.blocks) for (const it of b.items) {
       expect(EXERCISES[it.ex], `${ses.id} → ${it.ex}`).toBeDefined()
-      expect(ANIMS[EXERCISES[it.ex].anim], `animation de ${it.ex}`).toBeDefined()
+      expect(ANIMS[EXERCISES[it.ex].anim!], `animation de ${it.ex}`).toBeDefined()
     }
   })
   it('les animations des niveaux existent', () => {
@@ -82,6 +84,97 @@ describe('progression', () => {
     const prev = workout('p', '2026-11-04', { 'A:0': { reps: [11, 10, 9, 9] } })
     expect(lastReps(steps[1], 'A', [prev])).toBe(10)
     expect(lastReps(steps[1], 'A', [])).toBe(8)
+  })
+})
+
+describe('variantes', () => {
+  const ctx = { levels: {}, unavailable: [] }
+  const item = (ex: string) => Object.values(SESSIONS).flatMap((s) => s.blocks.flatMap((b) => b.items)).find((i) => i.ex === ex)!
+  const base = (ex: string, level = item(ex).level ?? 0) => ({ ex, level, item: item(ex) })
+
+  it('les variantes existent, ont une démo et un objectif', () => {
+    for (const [ex, list] of Object.entries(VARIANTS)) {
+      expect(EXERCISES[ex], ex).toBeDefined()
+      for (const v of list) {
+        const target = EXERCISES[v.ex]
+        expect(target, `${ex} → ${v.ex}`).toBeDefined()
+        expect(!!target.anim || !!VIDEOS[v.ex], `démo de ${v.ex}`).toBe(true)
+        expect(!!v.reps || !!v.duration, `objectif de ${ex} → ${v.ex}`).toBe(true)
+        if (v.level !== undefined) expect(target.levels?.[v.level], `${ex} → niveau ${v.level}`).toBeDefined()
+      }
+    }
+  })
+  it('chaque exercice des séances A, B et C a une variante', () => {
+    for (const id of ['A', 'B', 'C'] as const) for (const b of SESSIONS[id].blocks) for (const it of b.items) expect(VARIANTS[it.ex], it.ex).toBeDefined()
+  })
+  it('une variante n’utilise jamais le matériel en cause', () => {
+    for (const ex of Object.keys(VARIANTS).filter((e) => item(e))) {
+      for (const p of ['porte', 'lit', 'sac', 'livres'] as const) {
+        for (const o of optionsFor(base(ex), ctx, p)) expect(clashes(o.ex, o.level, new Set([p])), `${ex} / ${p} → ${o.ex}`).toBe(false)
+      }
+    }
+  })
+  it('la porte qui lâche : les 5 exercices accrochés ont une variante validée', () => {
+    const first = (ex: string) => optionsFor(base(ex), ctx, 'porte')[0]?.ex
+    expect(first('face-pull')).toBe('pull-apart')
+    expect(first('pulldown-kneel')).toBe('row-backpack')
+    expect(first('crunch-band')).toBe('leg-raise')
+    expect(first('pullover')).toBe('row-seated')
+    expect(first('fly-band')).toBe('pushup')
+  })
+  it('un élastique cassé : d’abord le même exercice avec un autre élastique, reps adaptées', () => {
+    const [a] = optionsFor(base('curl', 1), ctx, 'elastique')
+    expect(a).toMatchObject({ ex: 'curl', level: 2, reps: '8-13' })
+    const lighter = optionsFor(base('curl', 2), { ...ctx, unavailable: ['band:M'] }, 'elastique')[0]
+    expect(lighter).toMatchObject({ ex: 'curl', level: 0, reps: '13-18', tempo: '4-0-1' })
+    expect(shiftReps('12-15 / bras', 3)).toBe('15-18 / bras')
+  })
+  it('ne propose que les problèmes qui concernent l’exercice', () => {
+    expect(problemsFor(base('face-pull'), ctx)).toEqual(expect.arrayContaining(['elastique', 'porte']))
+    expect(problemsFor(base('face-pull'), ctx)).not.toContain('sac')
+  })
+  it('remplace les séries restantes et garde celles déjà faites', () => {
+    const swaps: Record<string, Swap[]> = { 'main:A:C:1': [{ ex: 'pull-apart', level: 0, reps: '15-20', fromRound: 2 }] }
+    const steps = buildSteps('A', { ...opts(3), swaps }).filter((s) => s.slot === 'main:A:C:1')
+    expect(steps.map((s) => s.ex)).toEqual(['face-pull', 'pull-apart', 'pull-apart'])
+    expect(steps.map((s) => s.recKey)).toEqual(['C:1', 'C:1~pull-apart@0', 'C:1~pull-apart@0'])
+    expect(steps.map((s) => s.recTotal)).toEqual([1, 2, 2])
+    expect(steps.map((s) => s.recRound)).toEqual([1, 1, 2])
+    expect(steps[1].orig?.ex).toBe('face-pull')
+  })
+  it('revenir à l’exercice d’origine reprend son enregistrement', () => {
+    const swaps: Record<string, Swap[]> = { 'main:A:C:1': [{ ex: 'pull-apart', level: 0, fromRound: 2 }, { ex: 'face-pull', level: 0, fromRound: 3, orig: true }] }
+    const steps = buildSteps('A', { ...opts(3), swaps }).filter((s) => s.slot === 'main:A:C:1')
+    expect(steps.map((s) => s.ex)).toEqual(['face-pull', 'pull-apart', 'face-pull'])
+    expect(steps.map((s) => s.recTotal)).toEqual([2, 1, 2])
+    expect(steps[2].recRound).toBe(2)
+  })
+  it('une variante en temps à la place de reps donne bien un chrono', () => {
+    const swaps: Record<string, Swap[]> = { 'main:C:B:0': [{ ex: 'wall-sit', level: 0, duration: 40, durationLabel: '30-60 s', fromRound: 1 }] }
+    const st = buildSteps('C', { ...opts(3), swaps }).find((s) => s.slot === 'main:C:B:0')!
+    expect(st.duration).toBe(40)
+    expect(st.item?.reps).toBeUndefined()
+  })
+  it('une variante ne fausse pas la progression de l’exercice d’origine', () => {
+    const prev = workout('p', '2026-11-04', { 'A:0': { reps: [12, 12, 12, 12] } })
+    const cur = workout('c', '2026-11-11', { 'A:0': { total: 2, done: 2, reps: [12, 12] }, 'A:0~pushup-diamond@0': { ex: 'pushup-diamond', total: 2, done: 2, reps: [15, 15] } })
+    expect(suggestions(cur, [prev], {})).toEqual([])
+    const next = workout('n', '2026-11-18', { 'A:0': { reps: [12, 12, 12, 12] } })
+    expect(suggestions(next, [cur], {})).toEqual([])
+  })
+  it('la porte cochée indisponible remplace tout au démarrage de la séance', () => {
+    const { swaps } = autoSwaps('A', opts(3), { levels: {}, unavailable: ['porte'] }, {})
+    const exs = buildSteps('A', { ...opts(3), swaps }).filter((s) => s.kind === 'work' && s.phase !== 'cooldown').map((s) => s.ex!)
+    expect(exs).not.toContain('face-pull')
+    expect(exs).not.toContain('pulldown-kneel')
+    expect(exs).not.toContain('crunch-band')
+    expect(exs).toContain('pull-apart')
+  })
+  it('une variante prévue s’applique une fois, sauf si son matériel manque', () => {
+    const planned = { pushup: { ex: 'pushup-diamond', level: 1, reps: '6-10' } }
+    expect(autoSwaps('A', opts(3), { levels: {}, unavailable: [] }, planned).used).toEqual(['pushup'])
+    const sac = { pushup: { ex: 'row-backpack', level: 0 } }
+    expect(autoSwaps('A', opts(3), { levels: {}, unavailable: ['sac'] }, sac).used).toEqual([])
   })
 })
 

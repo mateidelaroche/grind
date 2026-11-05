@@ -26,12 +26,21 @@ const subscribe = (cb: () => void) => {
 const useOnline = () => useSyncExternalStore(subscribe, () => navigator.onLine)
 
 /** Grande démo d'un exercice : vidéo YouTube si dispo et en ligne, sinon animation 3D (ou silhouette 2D). */
-export default function Demo({ anim: base, band, tempo, video }: { anim: string; band?: Band; tempo?: string; video?: VideoRef & { key: string } }) {
+export default function Demo({ anim: base, band, tempo, video }: { anim?: string; band?: Band; tempo?: string; video?: VideoRef & { key: string } }) {
+  const online = useOnline()
+  if (!base) {
+    return video && online
+      ? <div className="demo"><YouTubeLoop key={video.key} v={video} /><div className="tiny muted demo-bar" style={{ textAlign: 'right' }}>{video.channel} · YouTube</div></div>
+      : <div className="next-hint">Démo vidéo seulement : hors ligne, suis les consignes ci-dessous.</div>
+  }
+  return <DemoAnim base={base} band={band} tempo={tempo} video={video} online={online} />
+}
+
+function DemoAnim({ base, band, tempo, video, online }: { base: string; band?: Band; tempo?: string; video?: VideoRef & { key: string }; online: boolean }) {
   const anim = tempoAnim(base, tempo)
   const use3d = useStore((s) => s.settings.anim3d) && webgl
   const mode = useStore((s) => s.settings.demo ?? 'video')
   const setSettings = useStore((s) => s.setSettings)
-  const online = useOnline()
   const showVideo = !!video && online && mode === 'video'
   const animation = !use3d ? <Figure anim={anim} band={band} className="figure" /> : (
     <Suspense fallback={<Figure anim={anim} band={band} className="figure" />}>

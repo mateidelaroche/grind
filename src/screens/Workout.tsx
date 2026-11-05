@@ -2,27 +2,34 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { EXERCISES } from '../data/exercises'
 import { SESSIONS } from '../data/sessions'
 import { HowTo } from '../components/ExerciseInfo'
+import VariantSheet from '../components/VariantSheet'
 import MuscleMap from '../components/MuscleMap'
 import Demo from '../anim/Demo'
 import Figure from '../anim/Figure'
 import { workOf } from '../data/muscles'
 import { IconBack, IconCheck, IconClose, IconGuided, IconInfo, IconList, IconMetro, IconNext, IconPause, IconPlay } from '../components/icons'
-import { fmtTime, GearChips, Sheet } from '../components/ui'
+import { fmtTime, GearChips, Sheet, toast } from '../components/ui'
 import { beep, keepAwake, say, unlockAudio } from '../lib/audio'
 import { animOf, buildSteps, gearForExercise, lastReps, levelOf, sessionGear, today, videoOf, weekNumber, type Step } from '../lib/program'
 import { useCountdown, useMetronome } from '../lib/timer'
+import { clashes, problemsFor, type SwapChoice } from '../lib/variants'
 import { useStore, type ActiveSession } from '../store'
+import type { Swap } from '../types'
 
 const PHASE_TITLE = { warmup: 'Échauffement', main: 'Séance', cooldown: 'Retour au calme' }
 
+const buildOpts = (active: ActiveSession) => {
+  const s = useStore.getState()
+  return { week: weekNumber(today(), s.startDate), express: active.express, levels: s.levels, edits: s.edits, timeTargets: s.timeTargets, swaps: active.swaps }
+}
+
 function useSteps(active: ActiveSession) {
-  const s = useStore()
-  const week = weekNumber(today(), s.startDate)
+  const levels = useStore((s) => s.levels)
   return useMemo(
-    () => buildSteps(active.session, { week, express: active.express, levels: s.levels, edits: s.edits, timeTargets: s.timeTargets }),
-    // Figé au démarrage de la séance (sauf changement de niveau).
+    () => buildSteps(active.session, buildOpts(active)),
+    // Figé au démarrage de la séance (sauf changement de niveau ou d'exercice).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [active.workoutId, s.levels],
+    [active.workoutId, levels, active.swaps],
   )
 }
 
@@ -74,8 +81,8 @@ function upcoming(steps: Step[], from: number): Step[] {
   return out
 }
 
-export function RestTimer({ seconds, resetKey, onDone, next = [], feedback, nav }: {
-  seconds: number; resetKey: string; onDone: () => void; next?: Step[]; feedback?: React.ReactNode; nav?: Nav
+export function RestTimer({ seconds, resetKey, onDone, next = [], feedback, nav, onVariant }: {
+  seconds: number; resetKey: string; onDone: () => void; next?: Step[]; feedback?: React.ReactNode; nav?: Nav; onVariant?: (st: Step) => (() => void) | undefined
 }) {
   const t = useCountdown(seconds, { autoStart: true, resetKey, onEnd: () => { say('C’est reparti'); onDone() } })
   const [open, setOpen] = useState<Step>()
@@ -95,16 +102,22 @@ export function RestTimer({ seconds, resetKey, onDone, next = [], feedback, nav 
       {next.length > 0 && (
         <div className="stack" style={{ gap: 6 }}>
           <div className="tiny muted">{next.length > 1 ? 'ENSUITE · ENCHAÎNÉS SANS REPOS' : 'ENSUITE'} · touche pour voir la mise en place</div>
-          {next.map((x) => (
-            <button key={x.key} className="next-up tap" onClick={() => setOpen(x)}>
-              <Figure anim={animOf(x.ex!, x.level ?? 0)} keyIndex={0} playing={false} className="figure mini" />
-              <div className="grow" style={{ textAlign: 'left' }}>
-                <b>{stepTitle(x)}</b>
-                <div className="small muted">{[x.rounds && x.rounds > 1 ? `série ${x.round}/${x.rounds}` : '', x.side ?? '', levelOf(x.ex!, x.level ?? 0)?.label ?? ''].filter(Boolean).join(' · ')}</div>
+          {next.map((x) => {
+            const variant = onVariant?.(x)
+            return (
+              <div key={x.key} className="row" style={{ gap: 6 }}>
+                <button className="next-up tap grow" onClick={() => setOpen(x)}>
+                  <Figure anim={animOf(x.ex!, x.level ?? 0)} keyIndex={0} playing={false} className="figure mini" />
+                  <div className="grow" style={{ textAlign: 'left' }}>
+                    <b>{stepTitle(x)}</b>
+                    <div className="small muted">{[x.rounds && x.rounds > 1 ? `série ${x.round}/${x.rounds}` : '', x.side ?? '', levelOf(x.ex!, x.level ?? 0)?.label ?? ''].filter(Boolean).join(' · ')}</div>
+                  </div>
+                  <IconInfo />
+                </button>
+                {variant && <button className="btn sm variant-mini" aria-label={`Variante de ${EXERCISES[x.ex!].name}`} onClick={variant}>⇄<small>Variante</small></button>}
               </div>
-              <IconInfo />
-            </button>
-          ))}
+            )
+          })}
         </div>
       )}
       {feedback}
@@ -182,8 +195,9 @@ function HowToSheet({ exId, level, onClose, demo, tempo }: { exId: string; level
 }
 
 // ───────────── Vue guidée ─────────────
-function Guided({ steps, active, onValidate, onUnvalidate, onFinish }: {
+function Guided({ steps, active, onValidate, onUnvalidate, onFinish, onVariant }: {
   steps: Step[]; active: ActiveSession; onValidate: (i: number, held?: number, reps?: number) => void; onUnvalidate: (i: number) => void; onFinish: () => void
+  onVariant: (st: Step) => (() => void) | undefined
 }) {
   const setStep = useStore((s) => s.setStep)
   const flagSet = useStore((s) => s.flagSet)
@@ -217,7 +231,7 @@ function Guided({ steps, active, onValidate, onUnvalidate, onFinish }: {
         })}
       </div>
     )
-    return <RestTimer seconds={st.rest!} resetKey={st.key} onDone={() => go(i + 1)} next={upcoming(steps, i + 1)} feedback={feedback} nav={{ prev: nav.prev }} />
+    return <RestTimer seconds={st.rest!} resetKey={st.key} onDone={() => go(i + 1)} next={upcoming(steps, i + 1)} feedback={feedback} nav={{ prev: nav.prev }} onVariant={onVariant} />
   }
 
   // Superset : l'exercice suivant est un autre exercice du même bloc (clé « phase:séance:bloc:exo:tour »).
@@ -231,14 +245,15 @@ function Guided({ steps, active, onValidate, onUnvalidate, onFinish }: {
       done={!!active.done[st.key]}
       nav={nav}
       superset={sameRoundNext ? nextLabel : undefined}
+      onVariant={onVariant(st)}
       onValidate={(held, reps) => onValidate(i, held, reps)}
       onUnvalidate={() => onUnvalidate(i)}
     />
   )
 }
 
-function WorkStep({ st, active, done, nav, superset, onValidate, onUnvalidate }: {
-  st: Step; active: ActiveSession; done: boolean; nav: Nav; superset?: string
+function WorkStep({ st, active, done, nav, superset, onVariant, onValidate, onUnvalidate }: {
+  st: Step; active: ActiveSession; done: boolean; nav: Nav; superset?: string; onVariant?: () => void
   onValidate: (held?: number, reps?: number) => void; onUnvalidate: () => void
 }) {
   const ex = EXERCISES[st.ex!]
@@ -250,7 +265,7 @@ function WorkStep({ st, active, done, nav, superset, onValidate, onUnvalidate }:
   const [info, setInfo] = useState(false)
   const counted = !!st.recKey && !st.duration
   // Série déjà validée : on réaffiche les reps réellement faites.
-  const doneReps = useStore((s) => (st.recKey ? s.workouts.find((w) => w.id === active.workoutId)?.sets[st.recKey]?.reps?.[(st.round ?? 1) - 1] : undefined))
+  const doneReps = useStore((s) => (st.recKey ? s.workouts.find((w) => w.id === active.workoutId)?.sets[st.recKey]?.reps?.[(st.recRound ?? st.round ?? 1) - 1] : undefined))
   const [reps, setReps] = useState(() => (counted ? lastReps(st, active.session, useStore.getState().workouts, active.workoutId) : 0))
   useMetronome(st.item?.tempo, metro)
 
@@ -275,6 +290,7 @@ function WorkStep({ st, active, done, nav, superset, onValidate, onUnvalidate }:
         </div>
         <div className="ex-name">{ex.name}</div>
         {lvl && ex.levels!.length > 1 && <div className="small muted">{lvl.label}</div>}
+        {st.orig && <div className="small muted">⇄ Remplace {EXERCISES[st.orig.ex].name}{st.orig.ex === st.ex ? ` · ${levelOf(st.orig.ex, st.orig.level)?.label}` : ''}</div>}
         {superset && <div className="small" style={{ color: 'var(--warn)' }}>⚡ Enchaîne <b>sans repos</b> avec {superset}</div>}
       </div>
 
@@ -282,6 +298,7 @@ function WorkStep({ st, active, done, nav, superset, onValidate, onUnvalidate }:
 
       <div className="row wrap" style={{ gap: 8 }}>
         <button className="btn sm" onClick={() => setInfo(true)}><IconInfo /> Consignes</button>
+        {onVariant && <button className="btn sm" onClick={onVariant}>⇄ Variante</button>}
         {metronomeSetting && st.item?.tempo && (
           <button className={`btn sm ${metro ? 'primary' : ''}`} onClick={() => { unlockAudio(); setMetro(!metro) }}><IconMetro /> {st.item.tempo}</button>
         )}
@@ -320,8 +337,8 @@ function WorkStep({ st, active, done, nav, superset, onValidate, onUnvalidate }:
 }
 
 // ───────────── Vue liste ─────────────
-function ListView({ steps, active, onToggle, onFinish }: {
-  steps: Step[]; active: ActiveSession; onToggle: (i: number, held?: number) => void; onFinish: () => void
+function ListView({ steps, active, onToggle, onFinish, onVariant }: {
+  steps: Step[]; active: ActiveSession; onToggle: (i: number, held?: number) => void; onFinish: () => void; onVariant: (st: Step) => (() => void) | undefined
 }) {
   const [rest, setRest] = useState<number>()
   const [timed, setTimed] = useState<number>()
@@ -334,8 +351,8 @@ function ListView({ steps, active, onToggle, onFinish }: {
         if (last) last.rest = st.rest
         return
       }
-      const key = `${st.phase}:${st.label}:${st.ex}`
-      let g = out.find((x) => `${x.phase}:${x.label}:${x.ex}` === key)
+      const key = `${st.phase}:${st.label}:${st.ex}:${st.level ?? 0}`
+      let g = out.find((x) => `${x.phase}:${x.label}:${x.ex}:${x.level}` === key)
       if (!g) { g = { phase: st.phase, label: st.label ?? '', ex: st.ex!, level: st.level ?? 0, item: st.item, idx: [] }; out.push(g) }
       g.idx.push(i)
     })
@@ -349,8 +366,10 @@ function ListView({ steps, active, onToggle, onFinish }: {
         const header = g.phase !== lastPhase ? PHASE_TITLE[g.phase] : undefined
         lastPhase = g.phase
         const ex = EXERCISES[g.ex]
+        const free = g.idx.find((si) => !active.done[steps[si].key])
+        const variant = free === undefined ? undefined : onVariant(steps[free])
         return (
-          <div key={`${g.phase}${g.label}${g.ex}`} className="stack" style={{ gap: 8 }}>
+          <div key={`${g.phase}${g.label}${g.ex}${g.level}`} className="stack" style={{ gap: 8 }}>
             {header && <div className="section-title">{header}</div>}
             <div className="card" style={{ gap: 8 }}>
               <div className="row between">
@@ -372,7 +391,10 @@ function ListView({ steps, active, onToggle, onFinish }: {
                     </button>
                   ))}
                 </div>
-                {g.rest ? <button className="btn sm" onClick={() => setRest(g.rest)}>⏱ Repos</button> : null}
+                <div className="row" style={{ gap: 6 }}>
+                  {variant && <button className="btn sm" onClick={variant}>⇄ Variante</button>}
+                  {g.rest ? <button className="btn sm" onClick={() => setRest(g.rest)}>⏱ Repos</button> : null}
+                </div>
               </div>
             </div>
           </div>
@@ -398,8 +420,13 @@ function ListView({ steps, active, onToggle, onFinish }: {
 function Checklist({ active, onGo }: { active: ActiveSession; onGo: () => void }) {
   const s = useStore()
   const week = weekNumber(today(), s.startDate)
-  const gear = sessionGear(active.session, { week, express: active.express, levels: s.levels, edits: s.edits, timeTargets: s.timeTargets })
+  const opts = { week, express: active.express, levels: s.levels, edits: s.edits, timeTargets: s.timeTargets, swaps: active.swaps }
+  const gear = sessionGear(active.session, opts)
   const ses = SESSIONS[active.session]
+  const steps = buildSteps(active.session, opts).filter((x) => x.kind === 'work')
+  const replaced = steps.filter((x, i) => x.orig && steps.findIndex((y) => y.slot === x.slot) === i)
+  const blocked = new Set(s.unavailable ?? [])
+  const missing = [...new Set(steps.filter((x) => x.phase !== 'cooldown' && clashes(x.ex!, x.level ?? 0, blocked)).map((x) => EXERCISES[x.ex!].name))]
   return (
     <div className="workout-body">
       <div className="stack" style={{ gap: 4 }}>
@@ -410,8 +437,17 @@ function Checklist({ active, onGo }: { active: ActiveSession; onGo: () => void }
       <div className="card">
         <div style={{ fontWeight: 700 }}>🎒 Matériel à préparer</div>
         <GearChips gear={gear} />
-        {gear.anchors.length > 0 && <div className="small muted">Porte : elle doit s’ouvrir dans le sens opposé à toi. Ferme-la à clé si possible.</div>}
+        {gear.anchors.some((a) => a.includes('porte')) && <div className="small muted">Porte : elle doit s’ouvrir dans le sens opposé à toi. Ferme-la à clé si possible.</div>}
       </div>
+      {replaced.length > 0 && (
+        <div className="card" style={{ gap: 6 }}>
+          <div style={{ fontWeight: 700 }}>⇄ Exercices remplacés</div>
+          {replaced.map((x) => (
+            <div key={x.slot} className="small">{EXERCISES[x.orig!.ex].name} → <b>{x.orig!.ex === x.ex ? levelOf(x.ex!, x.level ?? 0)?.label : EXERCISES[x.ex!].name}</b></div>
+          ))}
+        </div>
+      )}
+      {missing.length > 0 && <div className="next-hint">⚠️ Pas de remplacement sans le matériel indisponible : {missing.join(', ')}. Passe-les pendant la séance si besoin.</div>}
       {ses.warmup !== 'none' && (
         <div className="card">
           <div style={{ fontWeight: 700 }}>{ses.warmup === 'genoux' ? '🦵 Routine genoux incluse' : '🔥 Échauffement inclus'}</div>
@@ -432,16 +468,45 @@ export default function Workout({ onFinished }: { onFinished: (id: string) => vo
   const recordSet = useStore((s) => s.recordSet)
   const setStep = useStore((s) => s.setStep)
   const finishWorkout = useStore((s) => s.finishWorkout)
+  const setSwaps = useStore((s) => s.setSwaps)
+  const levels = useStore((s) => s.levels)
+  const unavailable = useStore((s) => s.unavailable)
   const abandonWorkout = useStore((s) => s.abandonWorkout)
   const steps = useSteps(active)
   const [started, setStarted] = useState(active.stepIndex > 0 || Object.keys(active.done).length > 0)
   const [quit, setQuit] = useState(false)
+  const [variantOf, setVariantOf] = useState<Step>()
+
+  /** Première série pas encore commencée à cet emplacement : les séries faites gardent leur exercice. */
+  const freeRound = (slot: string) => {
+    const mine = steps.filter((x) => x.slot === slot)
+    const started = new Set(mine.filter((x) => active.done[x.key]).map((x) => x.round))
+    return mine.find((x) => !started.has(x.round))?.round
+  }
+  const onVariant = (st: Step) => {
+    if (!st.slot || st.phase === 'cooldown' || freeRound(st.slot) === undefined) return undefined
+    const current = { ex: st.ex!, level: st.level ?? 0 }
+    const can = !!st.orig || problemsFor(st.orig ?? { ...current, item: st.item! }, { levels, unavailable: unavailable ?? [] }, current).length > 0
+    return can ? () => setVariantOf(st) : undefined
+  }
+  const applySwap = (st: Step, choice?: SwapChoice) => {
+    const slot = st.slot!
+    const from = freeRound(slot)!
+    const kept = (active.swaps?.[slot] ?? []).filter((x) => x.fromRound < from)
+    const list: Swap[] = choice ? [...kept, { ...choice, fromRound: from }]
+      : kept.some((x) => !x.orig) ? [...kept, { ex: st.ex!, level: st.level ?? 0, fromRound: from, orig: true }] : []
+    const next = buildSteps(active.session, { ...buildOpts(active), swaps: { ...active.swaps, [slot]: list } })
+    setSwaps(slot, list, Object.fromEntries(next.filter((x) => x.recKey).map((x) => [x.recKey!, x.recTotal!])))
+    setVariantOf(undefined)
+    toast(choice ? `Remplacé par ${EXERCISES[choice.ex].name}` : `Retour à ${EXERCISES[st.orig!.ex].name}`)
+  }
+  const blockKey = (x: Step) => x.slot?.split(':').slice(0, 3).join(':')
 
   useEffect(() => { void keepAwake(true); return () => void keepAwake(false) }, [])
 
   const record = (i: number, delta: 1 | -1, held?: number, reps?: number) => {
     const st = steps[i]
-    if (st.recKey && st.side !== 'gauche') recordSet(st.recKey, { ex: st.ex!, total: st.rounds!, level: st.level ?? 0, best: held }, delta, reps)
+    if (st.recKey && st.side !== 'gauche') recordSet(st.recKey, { ex: st.ex!, total: st.recTotal ?? st.rounds!, level: st.level ?? 0, best: held }, delta, reps)
   }
   const finish = () => {
     beep.done()
@@ -480,11 +545,21 @@ export default function Workout({ onFinished }: { onFinished: (id: string) => vo
       {!started ? (
         <Checklist active={active} onGo={() => setStarted(true)} />
       ) : view === 'guided' ? (
-        <Guided steps={steps} active={active} onValidate={validate} onUnvalidate={unvalidate} onFinish={finish} />
+        <Guided steps={steps} active={active} onValidate={validate} onUnvalidate={unvalidate} onFinish={finish} onVariant={onVariant} />
       ) : (
-        <ListView steps={steps} active={active} onToggle={toggle} onFinish={finish} />
+        <ListView steps={steps} active={active} onToggle={toggle} onFinish={finish} onVariant={onVariant} />
       )}
 
+      {variantOf && (
+        <VariantSheet
+          st={variantOf}
+          fromRound={freeRound(variantOf.slot!)!}
+          superset={steps.some((x) => x.slot && x.slot !== variantOf.slot && blockKey(x) === blockKey(variantOf))}
+          onPick={(o) => applySwap(variantOf, o)}
+          onRestore={() => applySwap(variantOf)}
+          onClose={() => setVariantOf(undefined)}
+        />
+      )}
       {quit && (
         <Sheet onClose={() => setQuit(false)}>
           <div className="ex-name">Quitter la séance ?</div>

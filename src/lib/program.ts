@@ -3,7 +3,7 @@ import { gearAnim } from '../anim/anims'
 import { RUN_DAYS } from '../data/running'
 import { SESSIONS } from '../data/sessions'
 import { VIDEOS, type VideoRef } from '../data/videos'
-import type { Band, Block, DayPlan, Equip, Item, ItemEdit, Level, Sac, SessionId, Workout } from '../types'
+import type { Band, Block, DayPlan, Equip, Item, ItemEdit, Level, Sac, SessionId, Swap, Workout } from '../types'
 
 // ───────────── Dates (heure locale) ─────────────
 export const toISO = (d: Date) => {
@@ -109,7 +109,8 @@ export function videoOf(exId: string, lvl: number): (VideoRef & { key: string })
 
 export const animOf = (exId: string, lvl: number) => {
   const level = levelOf(exId, lvl)
-  return gearAnim(level?.anim ?? EXERCISES[exId].anim, exId, level)
+  const anim = level?.anim ?? EXERCISES[exId].anim
+  return anim ? gearAnim(anim, exId, level) : undefined
 }
 
 export function effectiveSets(sets: number, week: number, routine: boolean) {
@@ -126,7 +127,7 @@ export interface Gear { bands: Band[]; sac: Sac[]; equip: Equip[]; anchors: stri
 export function gearForExercise(exId: string, lvl: number): Gear {
   const ex = EXERCISES[exId]
   const level = levelOf(exId, lvl)
-  const equip = new Set(ex.equipment)
+  const equip = new Set(ex.equipment.filter((e) => !level?.free?.includes(e)))
   if (level?.band) equip.add('elastique')
   if (level?.sac) equip.add('sac')
   return {
@@ -156,6 +157,19 @@ export interface Step {
   /** Démarrage automatique du chrono (2e côté, étirements). */
   autoStart?: boolean
   restPause?: boolean
+  /** Emplacement dans la séance, commun à toutes les séries (phase:séance:bloc:position). */
+  slot?: string
+  /** Séries enregistrées sous recKey, et rang de celle-ci parmi elles (une variante n'en a qu'une partie). */
+  recTotal?: number
+  recRound?: number
+  /** Exercice prévu au programme, quand celui-ci le remplace. */
+  orig?: { ex: string; level: number; item: Item }
+}
+
+/** Remplacement en vigueur à une série donnée (le dernier commencé). */
+export function swapAt(list: Swap[] | undefined, round: number): Swap | undefined {
+  const sw = list?.filter((x) => x.fromRound <= round).at(-1)
+  return sw?.orig ? undefined : sw
 }
 
 /** Reps proposées : celles de la dernière fois sur la même série de la même séance, sinon le bas de la fourchette. */
@@ -164,7 +178,7 @@ export function lastReps(st: Step, session: string, workouts: Workout[], exclude
     const w = workouts[k]
     if (w.id === excludeId || w.session !== session) continue
     const r = st.recKey ? w.sets[st.recKey] : undefined
-    if (r && r.ex === st.ex && r.reps?.length) return r.reps[Math.min((st.round ?? 1) - 1, r.reps.length - 1)]
+    if (r && r.ex === st.ex && r.reps?.length) return r.reps[Math.min((st.recRound ?? st.round ?? 1) - 1, r.reps.length - 1)]
   }
   const n = parseInt(st.item?.reps ?? '', 10)
   return Number.isFinite(n) ? n : 10
@@ -176,9 +190,13 @@ export interface BuildOpts {
   levels: Record<string, number>
   edits: Record<string, ItemEdit>
   timeTargets: Record<string, number>
+  /** Remplacements de la séance en cours, par emplacement. */
+  swaps?: Record<string, Swap[]>
 }
 
 export const editKey = (sid: SessionId, blockId: string, idx: number) => `${sid}:${blockId}:${idx}`
+
+const swapId = (sw?: Swap) => (sw ? `~${sw.ex}@${sw.level}` : '')
 
 export function effectiveItem(sid: SessionId, block: Block, idx: number, edits: Record<string, ItemEdit>): Item {
   const item = block.items[idx]
@@ -205,16 +223,24 @@ function stepsFor(sid: SessionId, phase: Step['phase'], o: BuildOpts): Step[] {
     const rest = effectiveRest(sid, block, o.edits)
     for (let r = 1; r <= rounds; r++) {
       items.forEach((it, ii) => {
-        let item = it
-        const sets = effectiveSets(item.sets, o.week, routine)
+        const sets = effectiveSets(it.sets, o.week, routine)
         if (r > sets) return
+        const slot = `${phase}:${sid}:${block.id}:${ii}`
+        const list = o.swaps?.[slot]
+        const sw = swapAt(list, r)
+        const planLevel = effectiveLevel(it.ex, it, o.levels, o.week, routine)
+        let item: Item = sw ? { ex: sw.ex, sets: it.sets, reps: sw.reps, duration: sw.duration, durationLabel: sw.durationLabel, tempo: sw.tempo, note: sw.note } : it
         const ex = EXERCISES[item.ex]
-        const level = effectiveLevel(item.ex, item, o.levels, o.week, routine)
+        const level = sw ? sw.level : planLevel
+        const id = swapId(sw)
+        const sameRec = Array.from({ length: sets }, (_, q) => q + 1).filter((q) => swapId(swapAt(list, q)) === id)
         const label = items.length > 1 ? `${block.id}${ii + 1}` : block.id
         const base: Step = {
-          key: `${phase}:${sid}:${block.id}:${ii}:${r}`,
-          phase, kind: 'work', ex: item.ex, item, level, label, round: r, rounds: sets,
-          recKey: phase === 'main' ? `${block.id}:${ii}` : undefined,
+          key: `${phase}:${sid}:${block.id}:${ii}:${r}${id}`,
+          phase, kind: 'work', ex: item.ex, item, level, label, round: r, rounds: sets, slot,
+          recKey: phase === 'main' ? `${block.id}:${ii}${id}` : undefined,
+          recTotal: sameRec.length, recRound: sameRec.indexOf(r) + 1,
+          orig: sw ? { ex: it.ex, level: planLevel, item: it } : undefined,
           restPause: phase === 'main' && !!block.restPause && o.week >= 10 && o.week <= 12 && r === sets && ii < 2,
         }
         if (sid === 'MATIN' && item.duration) {
@@ -288,6 +314,8 @@ export function repRange(session: SessionId, recKey: string): [number, number] |
 }
 
 type Rec = Workout['sets'][string]
+/** Série remplacée en cours de séance : ni la variante ni l'exercice d'origine ne comptent pour les niveaux. */
+const swapped = (w: Workout, recKey: string) => recKey.includes('~') || Object.keys(w.sets).some((k) => k.startsWith(`${recKey}~`))
 /** Toutes les séries prévues faites, chacune au moins à `n` reps. */
 const allAtLeast = (r: Rec, n: number) => r.done >= r.total && (r.reps?.length ?? 0) >= r.total && r.reps!.every((x) => x >= n)
 /** La plupart des séries sous `n` reps. */
@@ -303,7 +331,7 @@ export function suggestions(w: Workout, history: Workout[], levels: Record<strin
   const out: Suggestion[] = []
   const seen = new Set<string>()
   for (const [recKey, rec] of Object.entries(w.sets)) {
-    if (seen.has(rec.ex)) continue
+    if (swapped(w, recKey) || seen.has(rec.ex)) continue
     seen.add(rec.ex)
     const ex = EXERCISES[rec.ex]
     const max = (ex.levels?.length ?? 1) - 1
@@ -311,7 +339,7 @@ export function suggestions(w: Workout, history: Workout[], levels: Record<strin
     if (rec.level !== cur) continue
     const range = repRange(w.session, recKey)
     const past = history
-      .filter((h) => h.completed && h.id !== w.id && h.session === w.session)
+      .filter((h) => h.completed && h.id !== w.id && h.session === w.session && !swapped(h, recKey))
       .map((h) => h.sets[recKey])
       .filter((r): r is Rec => !!r && r.ex === rec.ex && r.level === cur)
     const last = past.at(-1)

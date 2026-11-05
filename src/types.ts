@@ -11,6 +11,8 @@ export interface Level {
   anim?: string
   /** Niveau fait d'un bras / d'une jambe à la fois : les reps s'entendent par côté. */
   uni?: 'bras' | 'jambe'
+  /** Matériel de l'exercice dont ce niveau se passe (fente arrière : pas de lit). */
+  free?: Equip[]
 }
 
 export interface Exercise {
@@ -20,7 +22,8 @@ export interface Exercise {
   /** Matériel de base (le niveau peut ajouter un élastique ou le sac). */
   equipment: Equip[]
   anchor?: Anchor
-  anim: string
+  /** Absente pour les variantes montrées uniquement en vidéo. */
+  anim?: string
   setup?: string
   execution: string
   errors?: string
@@ -46,6 +49,26 @@ export interface Item {
   /** Niveau minimum imposé à partir d'une semaine donnée (fente arrière → bulgare). */
   minLevelFromWeek?: Record<number, number>
   note?: string
+}
+
+/** Ce qui empêche de faire un exercice pendant la séance. */
+export type Problem = 'elastique' | 'porte' | 'lit' | 'sac' | 'livres' | 'place' | 'bruit'
+/** Matériel coché comme indisponible dans les réglages. */
+export type Unavailable = 'porte' | 'lit' | 'sac' | 'livres' | `band:${Band}`
+
+/** Remplacement d'un exercice de la séance à partir d'une série donnée. */
+export interface Swap {
+  ex: string
+  level: number
+  /** Première série concernée : les séries d'avant gardent leur exercice. */
+  fromRound: number
+  reps?: string
+  duration?: number
+  durationLabel?: string
+  tempo?: string
+  note?: string
+  /** Retour à l'exercice d'origine à partir de cette série. */
+  orig?: boolean
 }
 
 export interface Block {

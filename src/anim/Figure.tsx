@@ -213,7 +213,12 @@ interface Props {
   className?: string
 }
 
-export default function Figure({ anim: id, band, playing = true, keyIndex, className, marks }: Props) {
+/** Vignette d'un exercice ; une variante sans animation affiche un simple repère vidéo. */
+export default function Figure({ anim, ...p }: Omit<Props, 'anim'> & { anim?: string }) {
+  return anim ? <Drawing anim={anim} {...p} /> : <div className={`${p.className ?? ''} no-anim`} aria-hidden>▶</div>
+}
+
+function Drawing({ anim: id, band, playing = true, keyIndex, className, marks }: Props) {
   const anim = ANIMS[id]
   const [time, setTime] = useState(0)
   const raf = useRef(0)
