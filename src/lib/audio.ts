@@ -5,12 +5,14 @@ let ctx: AudioContext | undefined
 
 /** À appeler sur un geste utilisateur (iOS exige un tap pour activer le son). */
 export function unlockAudio() {
+  if (ctx?.state === 'running') return
   try {
     // Mode « ambient » : les bips se mélangent à ta musique au lieu de la couper.
     const nav = navigator as Navigator & { audioSession?: { type: string } }
     if (nav.audioSession) nav.audioSession.type = 'ambient'
     if (!ctx) ctx = new AudioContext()
-    if (ctx.state === 'suspended') void ctx.resume()
+    // iOS passe en « interrupted » après un appel : tout ce qui n'est pas « running » est à relancer.
+    if (ctx.state !== 'running') void ctx.resume().catch(() => {})
     const buf = ctx.createBuffer(1, 1, 22050)
     const src = ctx.createBufferSource()
     src.buffer = buf
@@ -26,7 +28,12 @@ function tone(freq: number, dur: number, when = 0, vol = 0.5) {
   if (!ctx) unlockAudio()
   if (!ctx) return
   // Appel ou arrière-plan : iOS suspend le son, et l'horloge reste figée tant qu'on ne le relance pas.
-  if (ctx.state !== 'running') { ctx.resume().then(() => play(freq, dur, when, vol)).catch(() => {}); return }
+  // Un bip qui arrive trop tard est abandonné, sinon ils sortiraient tous d'un coup au retour du son.
+  if (ctx.state !== 'running') {
+    const asked = Date.now()
+    ctx.resume().then(() => { if (Date.now() - asked < 500) play(freq, dur, when, vol) }).catch(() => {})
+    return
+  }
   play(freq, dur, when, vol)
 }
 

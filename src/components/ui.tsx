@@ -19,13 +19,13 @@ export function SettingRow({ title, desc, children }: { title: string; desc?: st
   )
 }
 
-/** Fenêtre du bas : se ferme en touchant le fond, en la glissant vers le bas ou avec Échap. */
-export function Sheet({ onClose, children }: { onClose: () => void; children: ReactNode }) {
+/** Fenêtre du bas : se ferme en touchant le fond, en la glissant vers le bas ou avec Échap. Sans onClose, il faut répondre à ses boutons. */
+export function Sheet({ onClose, children }: { onClose?: () => void; children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null)
   const drag = useRef<{ y: number; t: number; dy: number; on: boolean }>(undefined)
   const [closing, setClosing] = useState(false)
   const close = () => {
-    if (closing) return
+    if (closing || !onClose) return
     setClosing(true)
     window.setTimeout(onClose, 200)
   }
@@ -42,7 +42,7 @@ export function Sheet({ onClose, children }: { onClose: () => void; children: Re
   }
   const onStart = (e: React.TouchEvent) => {
     // On ne tire la fenêtre que si son contenu est déjà en haut (sinon on fait défiler).
-    drag.current = { y: e.touches[0].clientY, t: Date.now(), dy: 0, on: (ref.current?.scrollTop ?? 0) <= 0 }
+    drag.current = { y: e.touches[0].clientY, t: Date.now(), dy: 0, on: !!onClose && (ref.current?.scrollTop ?? 0) <= 0 }
   }
   const onMove = (e: React.TouchEvent) => {
     const d = drag.current
@@ -65,6 +65,7 @@ export function Sheet({ onClose, children }: { onClose: () => void; children: Re
       <div
         ref={ref}
         className="sheet"
+        style={onClose ? undefined : { paddingTop: 16 }}
         role="dialog"
         aria-modal="true"
         onClick={(e) => e.stopPropagation()}
@@ -73,7 +74,7 @@ export function Sheet({ onClose, children }: { onClose: () => void; children: Re
         onTouchEnd={onEnd}
         onTouchCancel={onEnd}
       >
-        <button className="sheet-grab" aria-label="Fermer" onClick={close} />
+        {onClose && <button className="sheet-grab" aria-label="Fermer" onClick={close} />}
         {children}
       </div>
     </div>

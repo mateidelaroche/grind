@@ -42,36 +42,48 @@ async function findGist(token: string): Promise<string | undefined> {
   }
 }
 
-let pushing = false
-let pending = false
+/** Dernière lecture du Gist réussie : sans elle, écrire effacerait ce que les autres appareils y ont mis. */
+let fresh = false
+let flight: Promise<boolean> | undefined
+let next: Promise<boolean> | undefined
 
-export async function pushNow() {
+async function writeGist() {
   const { sync } = useStore.getState()
-  if (!sync.token || !sync.gistId) return
-  if (pushing) { pending = true; return }
-  pushing = true
+  if (!sync.token || !sync.gistId) return false
   try {
+    if (!fresh) await pull(sync.token, sync.gistId)
     useStore.getState().setSync({ status: 'syncing' })
     await gh(`/gists/${sync.gistId}`, sync.token, {
       method: 'PATCH',
       body: JSON.stringify({ files: { [FILE]: { content: JSON.stringify(buildDoc()) } } }),
     })
     useStore.getState().setSync({ status: 'idle', lastSync: Date.now(), error: undefined })
+    return true
   } catch (e) {
     useStore.getState().setSync({ status: 'error', error: (e as Error).message })
-  } finally {
-    pushing = false
-    if (pending) { pending = false; void pushNow() }
+    return false
   }
 }
 
+/** Envoie les données. Renvoie true une fois qu'elles sont bien sur le Gist. */
+export function pushNow(): Promise<boolean> {
+  if (!flight) {
+    flight = writeGist().finally(() => { flight = undefined })
+    return flight
+  }
+  next ??= flight.then(() => { next = undefined; return pushNow() })
+  return next
+}
+
 async function pull(token: string, gistId: string) {
+  fresh = false
   useStore.getState().setSync({ status: 'syncing' })
   const remote = await readGist(gistId, token)
   if (remote) {
     const s = useStore.getState()
     s.applyRemote(mergeData(syncedSnapshot(s), remote))
   }
+  fresh = true
   useStore.getState().setSync({ status: 'idle', lastSync: Date.now(), error: undefined })
 }
 
@@ -105,6 +117,7 @@ export async function connect(token: string) {
       })
       id = g.id as string
       useStore.getState().setSync({ gistId: id, status: 'idle', lastSync: Date.now() })
+      fresh = true
     }
   } catch (e) {
     useStore.getState().setSync({ status: 'error', error: (e as Error).message, token: undefined, gistId: undefined })
@@ -113,6 +126,7 @@ export async function connect(token: string) {
 }
 
 export function disconnect() {
+  fresh = false
   useStore.getState().setSync({ token: undefined, gistId: undefined, status: 'off', lastSync: undefined, error: undefined })
 }
 

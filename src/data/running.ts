@@ -1,4 +1,4 @@
-import type { RunLog, RunStep } from '../types'
+import type { RunLog, RunSplit, RunStep } from '../types'
 
 // Programme course : 10 semaines, 2 sorties (mercredi + dimanche), objectif 5 km sans s'arrêter.
 // La progression avance sortie par sortie (pas à la date) : une sortie ratée ne fait rien perdre.
@@ -62,9 +62,12 @@ export const runSteps = (r: RunSession): RunStep[] => [
   { kind: 'cool', dur: min(r.cool) },
 ]
 
-/** Durée estimée (min), à ~7 min/km pour l'étape 5 km. */
-export const runMinutes = (steps: RunStep[]) =>
-  Math.round(steps.reduce((a, s) => a + (s.dur ?? (s.dist ? (s.dist / 1000) * 7 * 60 : 0)), 0) / 60)
+/** Durée prévue d'une étape (s), à 7 min/km pour les fractions en distance. */
+export const stepSec = (s: RunStep) => s.dur ?? (s.dist ? (s.dist / 1000) * 420 : 0)
+/** Durée prévue d'une sortie (s). */
+export const plannedSec = (steps: RunStep[]) => steps.reduce((x, s) => x + stepSec(s), 0)
+/** Durée estimée (min). */
+export const runMinutes = (steps: RunStep[]) => Math.round(plannedSec(steps) / 60)
 
 export const runTime = (r: RunSession) => r.main.filter((s) => s.kind === 'run').reduce((a, s) => a + (s.dur ?? 0), 0) / 60
 
@@ -121,10 +124,17 @@ export function runProgress(runs: RunLog[]): RunProgress {
   return { index, adjust }
 }
 
-/** Durée prévue d'une sortie (s), à 7 min/km pour les fractions en distance. */
-export const plannedSec = (steps: RunStep[]) => steps.reduce((x, s) => x + (s.dur ?? (s.dist ? (s.dist / 1000) * 420 : 0)), 0)
 /** Sortie restée ouverte bien au-delà de sa durée prévue : ne pas la valider toute seule. */
 export const staleRun = (steps: RunStep[], t: number) => { const p = plannedSec(steps); return p > 0 && t > p + 1800 }
+/**
+ * Sortie déclarée terminée après coup : durée prévue, GPS gardé seulement s'il couvre la sortie
+ * (au moins 4 km/h sur la durée), et pas de validation si une fraction a été écourtée.
+ */
+export function staleClose(steps: RunStep[], splits: RunSplit[], dist: number) {
+  const dur = Math.round(plannedSec(steps))
+  const gps = dist >= (dur / 900) * 1000
+  return { dur, gps, dist: gps ? Math.round(dist) : 0, completed: splits.every((s) => (s.kind !== 'run' && s.kind !== 'work') || s.full) }
+}
 
 export const STEP_LABEL: Record<RunStep['kind'], string> = {
   warm: 'Échauffement', run: 'Cours', walk: 'Marche', cool: 'Retour au calme', work: 'Effort', rest: 'Récup', free: 'Sortie libre',

@@ -1,7 +1,7 @@
 import { useEffect, useReducer, useRef, useState } from 'react'
 import Figure from '../anim/Figure'
 import { EXERCISES } from '../data/exercises'
-import { FREE_STEPS, INDOOR_STEPS, plannedSec, RUN_PLAN, runMinutes, runSteps, staleRun, STEP_LABEL } from '../data/running'
+import { FREE_STEPS, INDOOR_STEPS, plannedSec, RUN_PLAN, runMinutes, runSteps, staleClose, staleRun, STEP_LABEL, stepSec } from '../data/running'
 import { IconBack } from '../components/icons'
 import { fmtTime, Sheet } from '../components/ui'
 import { beep, keepAwake, say, unlockAudio } from '../lib/audio'
@@ -124,7 +124,7 @@ export function RunScreen({ onFinished }: { onFinished: (id: string | undefined)
   const [, tick] = useReducer((x: number) => x + 1, 0)
   const lastBeep = useRef('')
   const [confirmEnd, setConfirmEnd] = useState(false)
-  const [stale, setStale] = useState(false)
+  const seen = useRef(0)
 
   // GPS + écran allumé
   useEffect(() => {
@@ -146,12 +146,13 @@ export function RunScreen({ onFinished }: { onFinished: (id: string | undefined)
       const r = useStore.getState().activeRun
       if (!r) return
       tick()
+      // Plus de 5 s sans passer ici : l'appli était fermée ou figée par le téléphone.
+      const now = Date.now()
+      const away = now - seen.current > 5000
+      seen.current = now
+      if (r.stale) return
       const t = elapsed(r)
-      if (staleRun(r.steps, t)) {
-        if (!r.pausedAt) patch({ pausedAt: Date.now() })
-        setStale(true)
-        return
-      }
+      if (staleRun(r.steps, t)) { patch({ stale: true, pausedAt: r.pausedAt ?? now }); return }
       if (r.pausedAt) return
       const d = tracker.dist
       let { step, stepT0, stepD0 } = r
@@ -165,6 +166,7 @@ export function RunScreen({ onFinished }: { onFinished: (id: string | undefined)
         splits.push({ kind: st.kind, t0: stepT0, dur: end - stepT0, dist: d - stepD0, full: true })
         step++; stepT0 = end; stepD0 = d
       }
+      if (step >= r.steps.length && away) { patch({ stale: true, pausedAt: now }); return }
       if (step !== r.step) {
         patch({ step, stepT0, stepD0, splits })
         if (step >= r.steps.length) { beep.done(); finish(true); return }
@@ -209,15 +211,18 @@ export function RunScreen({ onFinished }: { onFinished: (id: string | undefined)
     onFinished(id)
   }
 
-  /** Sortie retrouvée ouverte bien après sa fin : c'est toi qui dis si elle compte. */
+  /** Sortie retrouvée ouverte après sa fin : c'est toi qui dis si elle compte. */
   const closeStale = (done: boolean) => {
     const r = useStore.getState().activeRun
     if (!r) return
     const { points, dist } = r.indoor ? { points: [], dist: 0 } : tracker.end()
     void keepAwake(false)
     if (!done) { useStore.getState().abandonRun(); onFinished(undefined); return }
-    const dur = Math.round(plannedSec(r.steps))
-    onFinished(useStore.getState().finishRun({ endedAt: r.startedAt + dur * 1000, dur, dist: Math.round(dist), completed: true, splits: r.splits, track: points.length > 1 ? simplify(points) : undefined }))
+    const end = staleClose(r.steps, r.splits, dist)
+    onFinished(useStore.getState().finishRun({
+      endedAt: r.startedAt + end.dur * 1000, dur: end.dur, dist: end.dist, completed: end.completed,
+      splits: end.gps ? r.splits : [], track: end.gps && points.length > 1 ? simplify(points) : undefined,
+    }))
   }
 
   const skip = () => {
@@ -281,7 +286,7 @@ export function RunScreen({ onFinished }: { onFinished: (id: string | undefined)
       {st.kind !== 'free' && (
         <div className="run-bar">
           {a.steps.map((s, i) => {
-            const w = ((s.dur ?? (s.dist ? (s.dist / 1000) * 420 : 0)) / total) * 100
+            const w = (stepSec(s) / total) * 100
             const fill = i < a.step ? 100 : i === a.step && left !== undefined ? Math.min(100, (1 - left / (s.dur ?? s.dist ?? 1)) * 100) : 0
             return <div key={i} className={`k-${s.kind}`} style={{ width: `${w}%` }}><div style={{ width: `${fill}%` }} /></div>
           })}
@@ -302,10 +307,10 @@ export function RunScreen({ onFinished }: { onFinished: (id: string | undefined)
         {st.kind !== 'free' && <button className="btn big grow" onClick={skip}>⏭ Étape suivante</button>}
       </div>
 
-      {stale && (
-        <Sheet onClose={() => {}}>
+      {a.stale && (
+        <Sheet>
           <div className="ex-name">Sortie restée ouverte</div>
-          <div className="small muted">Elle a été commencée il y a longtemps et n’a jamais été terminée dans l’app. L’as-tu faite jusqu’au bout ?</div>
+          <div className="small muted">Sa fin prévue est passée pendant que l’app était fermée. L’as-tu faite jusqu’au bout ?</div>
           <button className="btn primary block" onClick={() => closeStale(true)}>Oui, je l’ai terminée</button>
           <button className="btn block" onClick={() => closeStale(false)}>Non, ne pas la compter</button>
         </Sheet>

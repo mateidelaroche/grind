@@ -102,6 +102,7 @@ export default function Today({ onStart, onOpenSession, onOpenWorkout, onSetting
     }
   }
 
+  const nextDays = Array.from({ length: 6 }, (_, i) => addDays(d, i + 1))
   const move = (target: string) => {
     if (plan.type !== 'session') return
     s.setOverride(d, 'rest')
@@ -327,8 +328,12 @@ export default function Today({ onStart, onOpenSession, onOpenWorkout, onSetting
       {moving && plan.type === 'session' && (
         <Sheet onClose={() => setMoving(false)}>
           <div className="ex-name">Déplacer {SESSIONS[plan.session].name}</div>
-          <div className="small muted">Choisis un jour libre : une journée ne peut contenir qu’une séance ou un basket.</div>
-          {Array.from({ length: 6 }, (_, i) => addDays(d, i + 1)).map((date) => {
+          <div className="small muted">
+            {nextDays.some((date) => dayPlan(date, s.overrides).type === 'rest')
+              ? 'Choisis un jour libre : une journée ne peut contenir qu’une séance ou un basket.'
+              : 'Aucun jour libre cette semaine : fais-la aujourd’hui ou laisse-la passer.'}
+          </div>
+          {nextDays.map((date) => {
             const p = dayPlan(date, s.overrides)
             const warn = legWarning(plan.session, date)
             const busy = p.type !== 'rest'

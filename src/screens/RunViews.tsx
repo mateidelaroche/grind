@@ -12,7 +12,7 @@ import { useStore } from '../store'
 import type { RunLog, SessionId } from '../types'
 import type { RunKind } from './Run'
 
-const RunMap = lazy(() => import('./RunMap'))
+const RunMap = lazy(() => import('./RunMap').catch(() => ({ default: () => <></> })))
 
 export const runTitle = (r: RunLog) => (r.indoor ? 'Cardio en chambre' : r.plan >= 0 ? `Sortie ${r.plan + 1} · ${RUN_PLAN[r.plan].title}` : 'Sortie libre')
 

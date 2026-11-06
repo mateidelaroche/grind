@@ -7,8 +7,8 @@ import { SESSIONS } from './data/sessions'
 import { VIDEOS } from './data/videos'
 import { effectiveSets, buildSteps, dayPlan, lastReps, repRange, suggestions, weightTrend } from './lib/program'
 import { VARIANTS } from './data/variants'
-import { runProgress, staleRun } from './data/running'
-import { markDeleted, mergeData } from './lib/merge'
+import { plannedSec, runMinutes, runProgress, staleClose, staleRun } from './data/running'
+import { markDeleted, mergeData, restoredDeleted } from './lib/merge'
 import type { SyncedData } from './store'
 import { autoSwaps, clashes, optionsFor, problemsFor, shiftReps } from './lib/variants'
 import type { SessionId, SetRecord, Swap, Workout } from './types'
@@ -119,6 +119,41 @@ describe('corrections de la revue', () => {
     expect(staleRun(steps, 1500)).toBe(false)
     expect(staleRun(steps, 50000)).toBe(true)
     expect(staleRun([{ kind: 'free' }], 50000)).toBe(false)
+  })
+  it('une valeur saisie après une suppression venue d’ailleurs est gardée', () => {
+    const gone = doc({ deleted: markDeleted(undefined, 'weights:2026-11-03', true, 5), updatedAt: 5 })
+    const typed = doc({ weights: { '2026-11-03': 78.4 }, deleted: markDeleted(undefined, 'weights:2026-11-03', false, 7), updatedAt: 7 })
+    expect(mergeData(gone, typed).weights).toEqual({ '2026-11-03': 78.4 })
+    expect(mergeData(typed, gone).weights).toEqual({ '2026-11-03': 78.4 })
+  })
+  it('une suppression faite après la saisie gagne toujours', () => {
+    const typed = doc({ weights: { '2026-11-03': 78.4 }, deleted: markDeleted(undefined, 'weights:2026-11-03', false, 5), updatedAt: 5 })
+    const gone = doc({ deleted: markDeleted(undefined, 'weights:2026-11-03', true, 7), updatedAt: 7 })
+    expect(mergeData(typed, gone).weights).toEqual({})
+  })
+  it('une sauvegarde restaurée survit à la synchro suivante', () => {
+    const tomb = markDeleted(undefined, 'workout:w1', true, 5)
+    const backup = doc({ workouts: [w], basket: { '2026-11-09': { done: true } } })
+    const local = { ...backup, deleted: restoredDeleted(backup, tomb, 9), updatedAt: 9 }
+    const merged = mergeData(local, doc({ deleted: { ...tomb, 'basket:2026-11-09': 6 }, updatedAt: 6 }))
+    expect(merged.workouts).toEqual([w])
+    expect(Object.keys(merged.basket)).toEqual(['2026-11-09'])
+  })
+  it('une sortie déclarée terminée ne garde pas un GPS partiel', () => {
+    const steps = [{ kind: 'run' as const, dur: 1800 }]
+    expect(staleClose(steps, [], 600)).toEqual({ dur: 1800, gps: false, dist: 0, completed: true })
+    expect(staleClose(steps, [], 4200)).toEqual({ dur: 1800, gps: true, dist: 4200, completed: true })
+  })
+  it('une sortie aux fractions écourtées n’est pas validée après coup', () => {
+    const steps = [{ kind: 'run' as const, dur: 1800 }]
+    const split = (full: boolean) => ({ kind: 'run' as const, t0: 0, dur: 60, dist: 100, full })
+    expect(staleClose(steps, [split(true), split(false)], 4200).completed).toBe(false)
+    expect(staleClose(steps, [split(true)], 4200).completed).toBe(true)
+  })
+  it('la durée prévue compte les fractions en distance à 7 min/km', () => {
+    const steps = [{ kind: 'warm' as const, dur: 300 }, { kind: 'run' as const, dist: 5000 }]
+    expect(plannedSec(steps)).toBe(2400)
+    expect(runMinutes(steps)).toBe(40)
   })
   it('une routine ne propose pas de monter de niveau', () => {
     const rec = { ex: 'tke', level: 0, done: 1, total: 1, reps: [15], flags: ['easy'] }

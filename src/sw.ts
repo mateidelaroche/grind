@@ -8,7 +8,7 @@ precacheAndRoute(self.__WB_MANIFEST)
 cleanupOutdatedCaches()
 registerRoute(new NavigationRoute(createHandlerBoundToURL('index.html')))
 
-// Nouvelle version active dès son installation : la page se recharge seule au lancement de l'appli.
+// Nouvelle version active dès son installation. Le rechargement de la page est décidé dans main.tsx.
 self.addEventListener('install', () => void self.skipWaiting())
 self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()))
 

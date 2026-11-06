@@ -1,6 +1,7 @@
 import { EXERCISES } from '../data/exercises'
 import { SESSIONS } from '../data/sessions'
 import { syncedSnapshot, useStore, type SyncedData } from '../store'
+import { restoredDeleted } from './merge'
 import { exportPhotos, importPhotos } from './photos'
 import { levelOf } from './program'
 
@@ -65,6 +66,7 @@ export async function importJSON(file: File) {
   const data = JSON.parse(await file.text()) as SyncedData & { photos?: Parameters<typeof importPhotos>[0] }
   if (!Array.isArray(data.workouts) || !data.settings) throw new Error('Fichier non reconnu')
   const { photos, ...rest } = data
-  useStore.getState().applyRemote({ ...rest, updatedAt: Date.now() })
+  const now = Date.now()
+  useStore.getState().applyRemote({ ...rest, deleted: restoredDeleted(rest, useStore.getState().deleted, now), updatedAt: now })
   if (photos?.length) await importPhotos(photos)
 }

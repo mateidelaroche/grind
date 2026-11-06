@@ -2,17 +2,28 @@
 import type { SyncedData } from '../store'
 import type { RunLog, Workout } from '../types'
 
-/** Suppressions par clé (« workout:id », « basket:date »…) : date > 0 si supprimé, < 0 si recréé depuis. La plus récente gagne. */
+/** Suppressions par clé (« workout:id », « basket:date »…) : date > 0 si supprimé, < 0 si écrit depuis. La plus récente gagne. */
 export type Deleted = Record<string, number>
 
+const MAPS = ['basket', 'weights', 'measures', 'food', 'tests', 'flex'] as const
+
 export function markDeleted(d: Deleted | undefined, key: string, gone: boolean, now = Date.now()): Deleted | undefined {
-  if (gone) return { ...d, [key]: now }
-  return (d?.[key] ?? 0) > 0 ? { ...d, [key]: -now } : d
+  // Toujours daté, même sans suppression connue ici : un autre appareil en a peut-être fait une plus ancienne.
+  return { ...d, [key]: gone ? now : -now }
 }
 
 function mergeDeleted(a: Deleted = {}, b: Deleted = {}) {
   const out = { ...a }
   for (const [k, v] of Object.entries(b)) if (Math.abs(v) > Math.abs(out[k] ?? 0)) out[k] = v
+  return out
+}
+
+/** Sauvegarde restaurée : tout ce qu'elle contient compte comme écrit maintenant, sinon la prochaine synchro le supprimerait à nouveau. */
+export function restoredDeleted(data: SyncedData, local: Deleted | undefined, now = Date.now()): Deleted {
+  const out = mergeDeleted(local, data.deleted)
+  for (const w of data.workouts) out[`workout:${w.id}`] = -now
+  for (const r of data.runs ?? []) out[`run:${r.id}`] = -now
+  for (const k of MAPS) for (const id of Object.keys(data[k] ?? {})) out[`${k}:${id}`] = -now
   return out
 }
 
@@ -40,7 +51,7 @@ export function mergeData(local: SyncedData, remote: SyncedData): SyncedData {
   const deleted = mergeDeleted(local.deleted, remote.deleted)
   const gone = (key: string) => (deleted[key] ?? 0) > 0
   // Journaux par date : union des deux côtés, le plus récent gagne en cas de conflit.
-  const map = <T,>(k: 'basket' | 'weights' | 'measures' | 'food' | 'tests' | 'flex') => {
+  const map = <T,>(k: (typeof MAPS)[number]) => {
     const l = (local[k] ?? {}) as Record<string, T>
     const r = (remote[k] ?? {}) as Record<string, T>
     const all = remoteNewer ? { ...l, ...r } : { ...r, ...l }

@@ -7,7 +7,8 @@ import type { VideoRef } from '../data/videos'
 import type { Band } from '../types'
 
 // three.js n'est chargé qu'au premier affichage d'une démo 3D.
-const Figure3D = lazy(() => import('./Figure3D'))
+// Si le fichier n'existe plus (version remplacée pendant la séance), on reste sur la silhouette 2D.
+const Figure3D = lazy(() => import('./Figure3D').catch(() => ({ default: (p: { anim: string; band?: Band }) => <Figure {...p} className="figure" /> })))
 
 const webgl = (() => {
   try {

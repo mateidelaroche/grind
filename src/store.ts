@@ -43,6 +43,8 @@ export interface ActiveRun {
   stepT0: number
   stepD0: number
   splits: RunSplit[]
+  /** Fin dépassée sans l'appli ouverte : c'est à toi de dire si la sortie compte. */
+  stale?: boolean
 }
 
 /** Données synchronisées dans le cloud. */

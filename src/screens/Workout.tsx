@@ -131,8 +131,10 @@ export function RestTimer({ seconds, resetKey, onDone, next = [], feedback, nav,
 /** onDone reçoit le temps réellement tenu (s). */
 function TimedWork({ step, onDone, nav }: { step: Step; onDone: (held: number) => void; nav?: Nav }) {
   const setTimeTarget = useStore((s) => s.setTimeTarget)
-  const totalRef = useRef(step.duration ?? 30)
-  const t = useCountdown(step.duration ?? 30, { prep: 3, autoStart: !!step.autoStart, resetKey: step.key, onEnd: () => onDone(totalRef.current) })
+  // Les étapes sont figées pour la séance : l'objectif à jour se lit ici, pour que le changement vaille aussi aux tours suivants.
+  const duration = useStore((s) => (step.ex ? s.timeTargets[step.ex] : undefined)) ?? step.duration ?? 30
+  const totalRef = useRef(duration)
+  const t = useCountdown(duration, { prep: 3, autoStart: !!step.autoStart, resetKey: step.key, onEnd: () => onDone(totalRef.current) })
   totalRef.current = t.total
   const running = t.state === 'run' || t.state === 'prep'
   const changeTarget = (d: number) => {
