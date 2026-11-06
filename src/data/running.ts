@@ -97,10 +97,13 @@ export interface RunProgress {
   adjust?: { kind: 'repeat' | 'back'; knee: number; date: string }
 }
 
+/** Place d'une sortie dans la progression : un rattrapage compte quand il est saisi, pas à la date courue. */
+export const runOrder = (r: RunLog) => r.loggedAt ?? r.startedAt
+
 export function runProgress(runs: RunLog[]): RunProgress {
   let index = 0
   let adjust: RunProgress['adjust']
-  for (const r of [...runs].sort((a, b) => a.startedAt - b.startedAt)) {
+  for (const r of [...runs].sort((a, b) => runOrder(a) - runOrder(b))) {
     if (r.indoor || r.plan < 0 || r.plan !== index || !r.completed) continue
     const knee = kneeOf(r)
     const weekStart = index - (index % 2)
@@ -117,6 +120,11 @@ export function runProgress(runs: RunLog[]): RunProgress {
   }
   return { index, adjust }
 }
+
+/** Durée prévue d'une sortie (s), à 7 min/km pour les fractions en distance. */
+export const plannedSec = (steps: RunStep[]) => steps.reduce((x, s) => x + (s.dur ?? (s.dist ? (s.dist / 1000) * 420 : 0)), 0)
+/** Sortie restée ouverte bien au-delà de sa durée prévue : ne pas la valider toute seule. */
+export const staleRun = (steps: RunStep[], t: number) => { const p = plannedSec(steps); return p > 0 && t > p + 1800 }
 
 export const STEP_LABEL: Record<RunStep['kind'], string> = {
   warm: 'Échauffement', run: 'Cours', walk: 'Marche', cool: 'Retour au calme', work: 'Effort', rest: 'Récup', free: 'Sortie libre',

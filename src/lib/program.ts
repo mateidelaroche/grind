@@ -328,6 +328,8 @@ const mostlyBelow = (r: Rec, n: number) => (r.reps?.length ?? 0) >= 2 && r.reps!
  */
 export function suggestions(w: Workout, history: Workout[], levels: Record<string, number>): Suggestion[] {
   const out: Suggestion[] = []
+  // Une routine garde ses niveaux fixes : monter de niveau n'y changerait rien.
+  if (SESSIONS[w.session]?.kind === 'routine') return out
   const seen = new Set<string>()
   for (const [recKey, rec] of Object.entries(w.sets)) {
     if (swapped(w, recKey) || seen.has(rec.ex)) continue

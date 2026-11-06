@@ -3,7 +3,7 @@ import { BarChart } from '../components/Charts'
 import { celebrate } from '../components/Confetti'
 import { IconBack } from '../components/icons'
 import { Stepper } from '../components/ui'
-import { KNEE_BACK, KNEE_REPEAT, kneeOf, RUN_PLAN, RUN_WEEKS, runMinutes, runProgress, runSteps, runTime } from '../data/running'
+import { KNEE_BACK, KNEE_REPEAT, kneeOf, RUN_PLAN, RUN_WEEKS, runMinutes, runOrder, runProgress, runSteps, runTime } from '../data/running'
 import { SESSIONS } from '../data/sessions'
 import { fmtDur, fmtKm, fmtMin, fmtPace } from '../lib/gps'
 import { addDays, dayPlan, formatDate, fromISO, mondayOf, nextRunDay, runStartOf, today } from '../lib/program'
@@ -24,8 +24,8 @@ export function RunRecap({ id, fresh, onBack, onStartSession }: { id: string; fr
   useEffect(() => { if (fresh && records.length) celebrate() }, [fresh, records.length])
   if (!r) return <div className="page"><button className="btn" onClick={onBack}>Retour</button></div>
 
-  const before = runProgress(s.runs.filter((x) => x.id !== r.id && x.startedAt < r.startedAt))
-  const after = runProgress(s.runs.filter((x) => x.startedAt <= r.startedAt))
+  const before = runProgress(s.runs.filter((x) => x.id !== r.id && runOrder(x) < runOrder(r)))
+  const after = runProgress(s.runs.filter((x) => runOrder(x) <= runOrder(r)))
   const efforts = r.splits.filter((x) => x.kind === 'run')
   const plan = dayPlan(r.date, s.overrides)
   const muscuDone = s.workouts.some((w) => w.date === r.date && w.completed && SESSIONS[w.session].kind === 'muscu')

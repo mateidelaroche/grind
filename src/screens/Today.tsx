@@ -216,7 +216,6 @@ export default function Today({ onStart, onOpenSession, onOpenWorkout, onSetting
           <button className="btn block" onClick={() => setSheet('flex')}>Faire le test</button>
         </div>
       )}
-      <KneeNextCard />
       {allDone && (
         <div className="card accent" style={{ alignItems: 'center', textAlign: 'center' }}>
           <div className="ex-name">Journée bouclée 💪</div>
@@ -328,17 +327,18 @@ export default function Today({ onStart, onOpenSession, onOpenWorkout, onSetting
       {moving && plan.type === 'session' && (
         <Sheet onClose={() => setMoving(false)}>
           <div className="ex-name">Déplacer {SESSIONS[plan.session].name}</div>
-          <div className="small muted">Choisis le jour.</div>
+          <div className="small muted">Choisis un jour libre : une journée ne peut contenir qu’une séance ou un basket.</div>
           {Array.from({ length: 6 }, (_, i) => addDays(d, i + 1)).map((date) => {
             const p = dayPlan(date, s.overrides)
             const warn = legWarning(plan.session, date)
+            const busy = p.type !== 'rest'
             return (
-              <button key={date} className="level" onClick={() => move(date)}>
+              <button key={date} className="level" disabled={busy} style={busy ? { opacity: 0.5 } : undefined} onClick={() => move(date)}>
                 <span style={{ fontSize: 20 }}>{planIcon(p)}</span>
                 <span className="grow">
                   <span style={{ fontWeight: 600, textTransform: 'capitalize' }}>{formatDate(date)}</span>
                   <span className="small muted" style={{ display: 'block' }}>
-                    {p.type === 'session' ? `Déjà : ${SESSIONS[p.session].name}` : p.type === 'basket' ? 'Basket ce jour-là' : 'Libre'}
+                    {p.type === 'session' ? `Déjà : ${SESSIONS[p.session].name}, choisis un autre jour` : p.type === 'basket' ? 'Basket ce jour-là, choisis un autre jour' : 'Libre'}
                     {warn && <span style={{ color: 'var(--warn)' }}> · ⚠️ veille de basket</span>}
                   </span>
                 </span>

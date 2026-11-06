@@ -1,7 +1,7 @@
 // Synchro cloud via un Gist GitHub secret : aucun compte en plus, juste un jeton « gist ».
 import { syncedSnapshot, useStore, type SyncedData } from '../store'
+import { mergeData } from './merge'
 import { notifyPlan } from './notify'
-import type { RunLog, Workout } from '../types'
 
 const FILE = 'grind-data.json'
 const API = 'https://api.github.com'
@@ -27,8 +27,10 @@ async function readGist(id: string, token: string): Promise<Doc | undefined> {
   const g = await gh(`/gists/${id}`, token)
   const f = g.files?.[FILE]
   if (!f) return
-  const text = f.truncated ? await (await fetch(f.raw_url)).text() : f.content
-  return JSON.parse(text)
+  if (!f.truncated) return JSON.parse(f.content)
+  const res = await fetch(f.raw_url)
+  if (!res.ok) throw new Error(`GitHub ${res.status}`)
+  return res.json()
 }
 
 async function findGist(token: string): Promise<string | undefined> {
@@ -38,54 +40,6 @@ async function findGist(token: string): Promise<string | undefined> {
     if (hit) return hit.id
     if (list.length < 100) return
   }
-}
-
-function mergeWorkouts(a: Workout[], b: Workout[]) {
-  const map = new Map<string, Workout>()
-  for (const w of [...a, ...b]) {
-    const cur = map.get(w.id)
-    if (!cur || (w.endedAt ?? 0) > (cur.endedAt ?? 0) || (w.completed && !cur.completed)) map.set(w.id, w)
-  }
-  return [...map.values()].sort((x, y) => x.startedAt - y.startedAt)
-}
-
-function mergeRuns(a: RunLog[] = [], b: RunLog[] = []) {
-  const map = new Map<string, RunLog>()
-  for (const r of [...a, ...b]) {
-    const cur = map.get(r.id)
-    if (!cur || (r.edited ?? r.endedAt) > (cur.edited ?? cur.endedAt)) map.set(r.id, r)
-  }
-  return [...map.values()].sort((x, y) => x.startedAt - y.startedAt)
-}
-
-function merge(remote: Doc) {
-  const s = useStore.getState()
-  const local = syncedSnapshot(s)
-  const remoteNewer = remote.updatedAt > local.updatedAt
-  const base = remoteNewer ? remote : local
-  // Journaux par date : union des deux côtés, le plus récent gagne en cas de conflit.
-  const map = <T,>(k: 'basket' | 'weights' | 'measures' | 'food' | 'tests' | 'flex') => {
-    const l = (local[k] ?? {}) as Record<string, T>
-    const r = (remote[k] ?? {}) as Record<string, T>
-    return remoteNewer ? { ...l, ...r } : { ...r, ...l }
-  }
-  const events = new Map([...(remote.levelLog ?? []), ...(local.levelLog ?? [])].map((e) => [`${e.ex}:${e.level}`, e]))
-  const merged: SyncedData = {
-    ...local,
-    ...Object.fromEntries(Object.entries(base).filter(([, v]) => v !== undefined)),
-    push: local.push ?? remote.push,
-    workouts: mergeWorkouts(local.workouts, remote.workouts),
-    runs: mergeRuns(local.runs, remote.runs),
-    basket: map('basket'),
-    weights: map('weights'),
-    measures: map('measures'),
-    food: map('food'),
-    tests: map('tests'),
-    flex: map('flex'),
-    levelLog: [...events.values()].sort((a, b) => a.date.localeCompare(b.date)),
-    updatedAt: Math.max(local.updatedAt, remote.updatedAt),
-  }
-  s.applyRemote(merged)
 }
 
 let pushing = false
@@ -111,16 +65,26 @@ export async function pushNow() {
   }
 }
 
+async function pull(token: string, gistId: string) {
+  useStore.getState().setSync({ status: 'syncing' })
+  const remote = await readGist(gistId, token)
+  if (remote) {
+    const s = useStore.getState()
+    s.applyRemote(mergeData(syncedSnapshot(s), remote))
+  }
+  useStore.getState().setSync({ status: 'idle', lastSync: Date.now(), error: undefined })
+}
+
+/** Récupère le Gist. Renvoie false en cas d'échec : il ne faut alors surtout pas l'écraser. */
 export async function pullNow() {
   const { sync } = useStore.getState()
-  if (!sync.token || !sync.gistId) return
+  if (!sync.token || !sync.gistId) return false
   try {
-    useStore.getState().setSync({ status: 'syncing' })
-    const remote = await readGist(sync.gistId, sync.token)
-    if (remote) merge(remote)
-    useStore.getState().setSync({ status: 'idle', lastSync: Date.now(), error: undefined })
+    await pull(sync.token, sync.gistId)
+    return true
   } catch (e) {
     useStore.getState().setSync({ status: 'error', error: (e as Error).message })
+    return false
   }
 }
 
@@ -132,7 +96,7 @@ export async function connect(token: string) {
     let id = await findGist(token)
     if (id) {
       useStore.getState().setSync({ gistId: id })
-      await pullNow()
+      await pull(token, id)
       await pushNow()
     } else {
       const g = await gh('/gists', token, {
@@ -143,7 +107,7 @@ export async function connect(token: string) {
       useStore.getState().setSync({ gistId: id, status: 'idle', lastSync: Date.now() })
     }
   } catch (e) {
-    useStore.getState().setSync({ status: 'error', error: (e as Error).message, token: undefined })
+    useStore.getState().setSync({ status: 'error', error: (e as Error).message, token: undefined, gistId: undefined })
     throw e
   }
 }

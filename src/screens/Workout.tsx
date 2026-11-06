@@ -137,7 +137,7 @@ function TimedWork({ step, onDone, nav }: { step: Step; onDone: (held: number) =
   const running = t.state === 'run' || t.state === 'prep'
   const changeTarget = (d: number) => {
     t.add(d)
-    if (step.phase === 'main' && step.ex) setTimeTarget(step.ex, Math.max(5, (step.duration ?? 30) + d))
+    if (step.phase === 'main' && step.ex) setTimeTarget(step.ex, Math.max(5, t.total + d))
   }
   return (
     <>

@@ -15,8 +15,8 @@ if (import.meta.env.DEV) {
   void import('./lib/gps').then((m) => { (window as unknown as { __tracker: unknown }).__tracker = m.tracker })
 }
 
-// iOS n'autorise le son qu'après un premier geste : on l'active au premier tap.
-window.addEventListener('pointerdown', unlockAudio, { once: true })
+// iOS n'autorise le son qu'après un geste, et peut le couper ensuite : chaque tap le réactive.
+window.addEventListener('pointerdown', unlockAudio)
 
 const unsub = useStore.subscribe((s) => {
   if (s.hydrated) { unsub(); startAutoSync() }

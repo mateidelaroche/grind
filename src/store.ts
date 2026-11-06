@@ -1,3 +1,4 @@
+import { markDeleted, type Deleted } from './lib/merge'
 import { create } from 'zustand'
 import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware'
 import { del, get, set } from 'idb-keyval'
@@ -73,6 +74,8 @@ export interface SyncedData {
   unavailable?: Unavailable[]
   /** Variantes choisies depuis les fiches pour la prochaine séance, par exercice remplacé. */
   planned?: Record<string, SwapChoice>
+  /** Suppressions à transmettre aux autres appareils. */
+  deleted?: Deleted
   updatedAt: number
 }
 
@@ -183,27 +186,27 @@ export const useStore = create<State>()(
           const basket = { ...s.basket }
           if (log) basket[date] = log
           else delete basket[date]
-          return { basket }
+          return { basket, deleted: markDeleted(s.deleted, `basket:${date}`, !log) }
         }),
         setStartDate: (d) => upd(() => ({ startDate: d })),
         setWeight: (date, kg) => upd((s) => {
           const weights = { ...s.weights }
           if (kg) weights[date] = kg
           else delete weights[date]
-          return { weights }
+          return { weights, deleted: markDeleted(s.deleted, `weights:${date}`, !kg) }
         }),
         setMeasures: (date, m) => upd((s) => {
           const measures = { ...s.measures }
           if (m && Object.values(m).some((v) => v)) measures[date] = m
           else delete measures[date]
-          return { measures }
+          return { measures, deleted: markDeleted(s.deleted, `measures:${date}`, !measures[date]) }
         }),
         setGoalWeight: (kg) => upd(() => ({ goalWeight: kg })),
         setFlex: (date, cm) => upd((s) => {
           const flex = { ...s.flex }
           if (cm === undefined) delete flex[date]
           else flex[date] = cm
-          return { flex }
+          return { flex, deleted: markDeleted(s.deleted, `flex:${date}`, cm === undefined) }
         }),
         setVideoLoop: (key, loop) => upd((s) => {
           const videoLoops = { ...s.videoLoops }
@@ -235,7 +238,7 @@ export const useStore = create<State>()(
           const tests = { ...s.tests }
           if (r) tests[id] = r
           else delete tests[id]
-          return { tests }
+          return { tests, deleted: markDeleted(s.deleted, `tests:${id}`, !r) }
         }),
         setFood: (date, f) => upd((s) => ({ food: { ...s.food, [date]: { ...s.food[date], ...f } } })),
         setRunStart: (d) => upd(() => ({ runStart: d })),
@@ -253,7 +256,7 @@ export const useStore = create<State>()(
         },
         abandonRun: () => setS({ activeRun: undefined }),
         setRunKnee: (id, k) => upd((s) => ({ runs: s.runs.map((r) => (r.id === id ? { ...r, ...k, edited: Date.now() } : r)) })),
-        deleteRun: (id) => upd((s) => ({ runs: s.runs.filter((r) => r.id !== id) })),
+        deleteRun: (id) => upd((s) => ({ runs: s.runs.filter((r) => r.id !== id), deleted: markDeleted(s.deleted, `run:${id}`, true) })),
 
         startWorkout: (session, express, date) => {
           const id = uid()
@@ -306,9 +309,10 @@ export const useStore = create<State>()(
             workouts: anyDone
               ? s.workouts.map((x) => (x.id === a.workoutId ? { ...x, endedAt: Date.now() } : x))
               : s.workouts.filter((x) => x.id !== a.workoutId),
+            deleted: anyDone ? s.deleted : markDeleted(s.deleted, `workout:${a.workoutId}`, true),
           }))
         },
-        deleteWorkout: (id) => upd((s) => ({ workouts: s.workouts.filter((w) => w.id !== id) })),
+        deleteWorkout: (id) => upd((s) => ({ workouts: s.workouts.filter((w) => w.id !== id), deleted: markDeleted(s.deleted, `workout:${id}`, true) })),
         logWorkout: (w) => {
           const id = uid()
           upd((s) => ({ workouts: [...s.workouts, { ...w, id }].sort((x, y) => x.startedAt - y.startedAt) }))
@@ -316,7 +320,7 @@ export const useStore = create<State>()(
         },
         addRun: (r) => {
           const id = uid()
-          upd((s) => ({ runs: [...s.runs, { ...r, id, edited: Date.now() }] }))
+          upd((s) => ({ runs: [...s.runs, { ...r, id, edited: Date.now(), loggedAt: Date.now() }] }))
           return id
         },
 
@@ -365,6 +369,6 @@ export function syncedSnapshot(s: State): SyncedData {
     startDate: s.startDate, levels: s.levels, mastered: s.mastered, timeTargets: s.timeTargets, edits: s.edits,
     overrides: s.overrides, workouts: s.workouts, basket: s.basket, settings: s.settings, push: s.push,
     weights: s.weights, measures: s.measures, goalWeight: s.goalWeight, tests: s.tests, levelLog: s.levelLog, food: s.food,
-    runs: s.runs, runStart: s.runStart, videoLoops: s.videoLoops, flex: s.flex, unavailable: s.unavailable, planned: s.planned, updatedAt: s.updatedAt,
+    runs: s.runs, runStart: s.runStart, videoLoops: s.videoLoops, flex: s.flex, unavailable: s.unavailable, planned: s.planned, deleted: s.deleted, updatedAt: s.updatedAt,
   }
 }

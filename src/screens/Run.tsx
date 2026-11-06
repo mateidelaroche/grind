@@ -1,7 +1,7 @@
 import { useEffect, useReducer, useRef, useState } from 'react'
 import Figure from '../anim/Figure'
 import { EXERCISES } from '../data/exercises'
-import { FREE_STEPS, INDOOR_STEPS, RUN_PLAN, runMinutes, runSteps, STEP_LABEL } from '../data/running'
+import { FREE_STEPS, INDOOR_STEPS, plannedSec, RUN_PLAN, runMinutes, runSteps, staleRun, STEP_LABEL } from '../data/running'
 import { IconBack } from '../components/icons'
 import { fmtTime, Sheet } from '../components/ui'
 import { beep, keepAwake, say, unlockAudio } from '../lib/audio'
@@ -124,6 +124,7 @@ export function RunScreen({ onFinished }: { onFinished: (id: string | undefined)
   const [, tick] = useReducer((x: number) => x + 1, 0)
   const lastBeep = useRef('')
   const [confirmEnd, setConfirmEnd] = useState(false)
+  const [stale, setStale] = useState(false)
 
   // GPS + écran allumé
   useEffect(() => {
@@ -145,8 +146,13 @@ export function RunScreen({ onFinished }: { onFinished: (id: string | undefined)
       const r = useStore.getState().activeRun
       if (!r) return
       tick()
-      if (r.pausedAt) return
       const t = elapsed(r)
+      if (staleRun(r.steps, t)) {
+        if (!r.pausedAt) patch({ pausedAt: Date.now() })
+        setStale(true)
+        return
+      }
+      if (r.pausedAt) return
       const d = tracker.dist
       let { step, stepT0, stepD0 } = r
       const splits = [...r.splits]
@@ -203,6 +209,17 @@ export function RunScreen({ onFinished }: { onFinished: (id: string | undefined)
     onFinished(id)
   }
 
+  /** Sortie retrouvée ouverte bien après sa fin : c'est toi qui dis si elle compte. */
+  const closeStale = (done: boolean) => {
+    const r = useStore.getState().activeRun
+    if (!r) return
+    const { points, dist } = r.indoor ? { points: [], dist: 0 } : tracker.end()
+    void keepAwake(false)
+    if (!done) { useStore.getState().abandonRun(); onFinished(undefined); return }
+    const dur = Math.round(plannedSec(r.steps))
+    onFinished(useStore.getState().finishRun({ endedAt: r.startedAt + dur * 1000, dur, dist: Math.round(dist), completed: true, splits: r.splits, track: points.length > 1 ? simplify(points) : undefined }))
+  }
+
   const skip = () => {
     const r = useStore.getState().activeRun
     if (!r || r.step >= r.steps.length) return
@@ -230,7 +247,7 @@ export function RunScreen({ onFinished }: { onFinished: (id: string | undefined)
   const left = st.dur !== undefined ? st.dur - inStep : st.dist !== undefined ? st.dist - (dist - a.stepD0) : undefined
   const pace = tracker.pace()
   const avg = dist > 50 ? t / (dist / 1000) : undefined
-  const total = a.steps.reduce((x, s) => x + (s.dur ?? (s.dist ? (s.dist / 1000) * 420 : 0)), 0)
+  const total = plannedSec(a.steps)
   const efforts = a.steps.filter((s) => isEffort(s.kind)).length
   const effortN = a.steps.slice(0, a.step + 1).filter((s) => isEffort(s.kind)).length
   const perRound = new Set(a.steps.filter((s) => s.kind === 'work').map((s) => s.ex)).size || 1
@@ -285,6 +302,14 @@ export function RunScreen({ onFinished }: { onFinished: (id: string | undefined)
         {st.kind !== 'free' && <button className="btn big grow" onClick={skip}>⏭ Étape suivante</button>}
       </div>
 
+      {stale && (
+        <Sheet onClose={() => {}}>
+          <div className="ex-name">Sortie restée ouverte</div>
+          <div className="small muted">Elle a été commencée il y a longtemps et n’a jamais été terminée dans l’app. L’as-tu faite jusqu’au bout ?</div>
+          <button className="btn primary block" onClick={() => closeStale(true)}>Oui, je l’ai terminée</button>
+          <button className="btn block" onClick={() => closeStale(false)}>Non, ne pas la compter</button>
+        </Sheet>
+      )}
       {confirmEnd && (
         <Sheet onClose={() => setConfirmEnd(false)}>
           <div className="ex-name">Terminer la sortie ?</div>

@@ -112,7 +112,7 @@ export default function Settings({ onLoops }: { onLoops: () => void }) {
                   {sync.status === 'syncing' ? 'Synchronisation…' : sync.status === 'error' ? `Erreur : ${sync.error}` : sync.lastSync ? `Dernière synchro ${new Date(sync.lastSync).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}` : ''}
                 </div>
               </div>
-              <button className="btn sm" onClick={async () => { await pullNow(); await pushNow(); toast('Synchronisé') }}>Synchroniser</button>
+              <button className="btn sm" onClick={async () => { if (await pullNow()) { await pushNow(); toast('Synchronisé') } else toast('Synchro impossible, réessaie plus tard.') }}>Synchroniser</button>
             </div>
             <button className="btn sm ghost danger" style={{ alignSelf: 'flex-start' }} onClick={() => { if (confirm('Déconnecter la synchro ? Tes données restent sur le téléphone.')) disconnect() }}>Déconnecter</button>
           </>

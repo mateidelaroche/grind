@@ -7,6 +7,9 @@ import { SESSIONS } from './data/sessions'
 import { VIDEOS } from './data/videos'
 import { effectiveSets, buildSteps, dayPlan, lastReps, repRange, suggestions, weightTrend } from './lib/program'
 import { VARIANTS } from './data/variants'
+import { runProgress, staleRun } from './data/running'
+import { markDeleted, mergeData } from './lib/merge'
+import type { SyncedData } from './store'
 import { autoSwaps, clashes, optionsFor, problemsFor, shiftReps } from './lib/variants'
 import type { SessionId, SetRecord, Swap, Workout } from './types'
 
@@ -84,6 +87,43 @@ describe('progression', () => {
     const prev = workout('p', '2026-11-04', { 'A:0': { reps: [11, 10, 9, 9] } })
     expect(lastReps(steps[1], 'A', [prev])).toBe(10)
     expect(lastReps(steps[1], 'A', [])).toBe(8)
+  })
+})
+
+describe('corrections de la revue', () => {
+  const doc = (o: Partial<SyncedData>) => ({ workouts: [], runs: [], basket: {}, weights: {}, measures: {}, food: {}, tests: {}, levelLog: [], updatedAt: 1, ...o }) as unknown as SyncedData
+  const w = { id: 'w1', date: '2026-11-08', session: 'A', express: false, startedAt: 1, sets: {}, completed: true } as Workout
+
+  it('une séance supprimée ne revient pas depuis le Gist', () => {
+    const local = doc({ updatedAt: 5, deleted: markDeleted(undefined, 'workout:w1', true, 5) })
+    expect(mergeData(local, doc({ workouts: [w] })).workouts).toEqual([])
+    expect(mergeData(doc({ workouts: [w], updatedAt: 9 }), local).workouts).toEqual([])
+  })
+  it('un basket décoché reste décoché, recoché il revient', () => {
+    const basket = { '2026-11-09': { done: true } }
+    const off = markDeleted(undefined, 'basket:2026-11-09', true, 5)
+    expect(mergeData(doc({ deleted: off, updatedAt: 5 }), doc({ basket })).basket).toEqual({})
+    const on = markDeleted(off, 'basket:2026-11-09', false, 8)
+    expect(mergeData(doc({ basket, deleted: on, updatedAt: 8 }), doc({ deleted: off })).basket).toEqual(basket)
+  })
+  it('une fusion sans suppression garde les deux côtés', () => {
+    const merged = mergeData(doc({ workouts: [w] }), doc({ workouts: [{ ...w, id: 'w2', startedAt: 2 }] }))
+    expect(merged.workouts.map((x) => x.id)).toEqual(['w1', 'w2'])
+  })
+  it('un rattrapage compte quand il est saisi, même à une date passée', () => {
+    const run = (plan: number, startedAt: number, loggedAt?: number) => ({ id: `r${plan}`, date: 'x', plan, startedAt, loggedAt, endedAt: startedAt, dur: 1, dist: 1, completed: true, splits: [] })
+    expect(runProgress([run(0, 100), run(1, 50, 200)]).index).toBe(2)
+  })
+  it('une sortie retrouvée ouverte ne se valide pas seule', () => {
+    const steps = [{ kind: 'run' as const, dur: 1200 }]
+    expect(staleRun(steps, 1500)).toBe(false)
+    expect(staleRun(steps, 50000)).toBe(true)
+    expect(staleRun([{ kind: 'free' }], 50000)).toBe(false)
+  })
+  it('une routine ne propose pas de monter de niveau', () => {
+    const rec = { ex: 'tke', level: 0, done: 1, total: 1, reps: [15], flags: ['easy'] }
+    const wk = { ...w, session: 'GENOUX', sets: { 'G3:0': rec } } as unknown as Workout
+    expect(suggestions(wk, [], {})).toEqual([])
   })
 })
 

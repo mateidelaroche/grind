@@ -209,6 +209,8 @@ export interface RunLog {
   plan: number
   indoor?: boolean
   startedAt: number
+  /** Rattrapage : date de saisie, qui fixe sa place dans la progression. */
+  loggedAt?: number
   endedAt: number
   /** Temps actif (s), pauses exclues. */
   dur: number

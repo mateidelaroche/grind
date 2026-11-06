@@ -8,9 +8,9 @@ precacheAndRoute(self.__WB_MANIFEST)
 cleanupOutdatedCaches()
 registerRoute(new NavigationRoute(createHandlerBoundToURL('index.html')))
 
-self.addEventListener('message', (e) => {
-  if (e.data?.type === 'SKIP_WAITING') void self.skipWaiting()
-})
+// Nouvelle version active dès son installation : la page se recharge seule au lancement de l'appli.
+self.addEventListener('install', () => void self.skipWaiting())
+self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()))
 
 self.addEventListener('push', (event) => {
   let data: { title?: string; body?: string } = {}

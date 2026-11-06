@@ -25,6 +25,13 @@ function tone(freq: number, dur: number, when = 0, vol = 0.5) {
   if (!useStore.getState().settings.sounds) return
   if (!ctx) unlockAudio()
   if (!ctx) return
+  // Appel ou arrière-plan : iOS suspend le son, et l'horloge reste figée tant qu'on ne le relance pas.
+  if (ctx.state !== 'running') { ctx.resume().then(() => play(freq, dur, when, vol)).catch(() => {}); return }
+  play(freq, dur, when, vol)
+}
+
+function play(freq: number, dur: number, when: number, vol: number) {
+  if (!ctx) return
   const t0 = ctx.currentTime + when
   const osc = ctx.createOscillator()
   const gain = ctx.createGain()
@@ -84,5 +91,7 @@ export async function keepAwake(on: boolean) {
 }
 
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && wanted) void keepAwake(true)
+  if (document.visibilityState !== 'visible') return
+  if (wanted) void keepAwake(true)
+  if (ctx && ctx.state !== 'running') void ctx.resume().catch(() => {})
 })
