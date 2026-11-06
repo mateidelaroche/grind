@@ -154,7 +154,7 @@ export default function Today({ onStart, onOpenSession, onOpenWorkout, onSetting
                 <GearLine gear={sessionGear(plan.session, opts)} />
                 <button className="btn primary big block" onClick={() => onStart(plan.session, false)}>Démarrer</button>
                 <div className="row">
-                  <button className="btn grow" onClick={() => onStart(plan.session, true)}>⚡ Express 25′</button>
+                  <button className="btn grow" onClick={() => onStart(plan.session, true)}>⚡ Express {ses.expressDuration}</button>
                   <button className="btn grow" onClick={() => setMoving(true)}>📅 Déplacer</button>
                 </div>
               </>

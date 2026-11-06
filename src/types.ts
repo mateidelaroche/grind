@@ -89,6 +89,8 @@ export interface Session {
   name: string
   subtitle: string
   kind: 'muscu' | 'routine'
+  /** Durée de la séance express, échauffement et retour au calme compris. */
+  expressDuration?: string
   warmup: 'general' | 'genoux' | 'none'
   cooldown: boolean
   blocks: Block[]

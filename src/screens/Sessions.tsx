@@ -13,7 +13,7 @@ import MuscleMap from '../components/MuscleMap'
 const MAIN: SessionId[] = ['A', 'B', 'C']
 const ROUTINES: SessionId[] = ['MATIN', 'GENOUX', 'BONUS', 'WARMUP', 'COOLDOWN']
 
-export function SessionsList({ onOpen, onRunProgram }: { onOpen: (s: SessionId) => void; onRunProgram: () => void }) {
+export function SessionsList({ onOpen, onStart, onRunProgram }: { onOpen: (s: SessionId) => void; onStart: (s: SessionId, express: boolean) => void; onRunProgram: () => void }) {
   return (
     <div className="page">
       <div className="page-title">Séances</div>
@@ -24,13 +24,16 @@ export function SessionsList({ onOpen, onRunProgram }: { onOpen: (s: SessionId) 
       {MAIN.map((id) => {
         const s = SESSIONS[id]
         return (
-          <button key={id} className="card tap" onClick={() => onOpen(id)}>
-            <div className="row between"><div className="ex-name">{s.name}</div><span className="small muted">{s.duration}</span></div>
-            <div className="muted small">{s.subtitle}</div>
-            <div className="row wrap" style={{ gap: 6 }}>
-              {s.blocks.flatMap((b) => b.items).map((it, i) => <span key={i} className="chip">{EXERCISES[it.ex].name}</span>)}
-            </div>
-          </button>
+          <div key={id} className="card">
+            <button className="stack" style={{ gap: 10, textAlign: 'left', width: '100%' }} onClick={() => onOpen(id)}>
+              <div className="row between"><div className="ex-name">{s.name}</div><span className="small muted">{s.duration}</span></div>
+              <div className="muted small">{s.subtitle}</div>
+              <div className="row wrap" style={{ gap: 6 }}>
+                {s.blocks.flatMap((b) => b.items).map((it, i) => <span key={i} className="chip">{EXERCISES[it.ex].name}</span>)}
+              </div>
+            </button>
+            <button className="btn block" onClick={() => onStart(id, true)}>⚡ Express {s.expressDuration}</button>
+          </div>
         )
       })}
       <div className="section-title">Routines</div>
@@ -66,8 +69,8 @@ export function SessionDetail({ id, onBack, onStart, onExercise }: {
         </div>
       </div>
       <MuscleMap work={workOfSession(id)} compact />
-      {!routine && week >= 1 && (week <= 2 || week === 9) && (
-        <div className="small muted">📉 Semaine {week} : séries réduites automatiquement ({week <= 2 ? '1 série en moins' : 'moitié des séries'}).</div>
+      {!routine && week === 9 && (
+        <div className="small muted">📉 Semaine {week} : séries réduites automatiquement (moitié des séries).</div>
       )}
       {ses.blocks.map((b) => (
         <div key={b.id} className="card" style={{ gap: 4 }}>
@@ -98,7 +101,7 @@ export function SessionDetail({ id, onBack, onStart, onExercise }: {
         </div>
       ))}
       <button className="btn primary big block" onClick={() => onStart(id, false)}>Démarrer</button>
-      {!routine && <button className="btn block" onClick={() => onStart(id, true)}>⚡ Express 25 min</button>}
+      {!routine && <button className="btn block" onClick={() => onStart(id, true)}>⚡ Express {ses.expressDuration}</button>}
 
       {editing && (() => {
         const block = ses.blocks.find((b) => b.id === editing.block)!

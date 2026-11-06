@@ -66,6 +66,8 @@ export const EX_MUSCLES: Record<string, Work> = {
   'side-plank': w(['obliques'], ['moyenFessier', 'abdos'], ['deltLat', 'lombaires']),
   'dead-bug': w(['abdos'], ['obliques'], ['lombaires', 'flechisseurs']),
   hollow: w(['abdos'], ['obliques', 'flechisseurs']),
+  bicycle: w(['abdos', 'obliques'], ['flechisseurs']),
+  'crunch-sac': w(['abdos'], ['obliques']),
   march: w([], ['flechisseurs', 'quadriceps'], ['abdos']),
   'arm-circles': w([], ['deltAvant', 'deltLat', 'deltArr']),
   'cat-cow': w([], GAINAGE),

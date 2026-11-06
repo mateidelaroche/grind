@@ -381,6 +381,29 @@ const list: Exercise[] = [
     levels: [{ label: 'Genoux pliés' }, { label: 'Jambes tendues' }, { label: 'Jambes et bras tendus' }],
   },
 
+  // ───────────── ABDOS DYNAMIQUES ─────────────
+  {
+    id: 'bicycle',
+    name: 'Crunch vélo',
+    muscles: 'Obliques, grand droit',
+    equipment: [],
+    anim: 'bicycle',
+    setup: 'Sur le dos, bas du dos plaqué au sol, mains derrière les oreilles, genoux à 90°.',
+    execution: 'Amène un coude vers le genou opposé en tendant l’autre jambe, tiens 1 s, change de côté. C’est l’épaule qui tourne, pas seulement le coude.',
+    errors: 'Aller vite, tirer sur la nuque, laisser le bas du dos se creuser.',
+  },
+  {
+    id: 'crunch-sac',
+    name: 'Crunch au sac',
+    muscles: 'Grand droit (abdos visibles)',
+    equipment: [],
+    anim: 'crunch-sac',
+    setup: 'Sur le dos, genoux pliés, pieds à plat, sac serré contre la poitrine.',
+    execution: 'Enroule le haut du dos en rapprochant les côtes du bassin, serre 1 s, redescends lentement.',
+    errors: 'Tirer sur la nuque, décoller le bas du dos, s’aider d’un élan.',
+    levels: [{ label: 'Sans charge' }, { label: 'Sac léger', sac: 'léger' }, { label: 'Sac moyen', sac: 'moyen' }, { label: 'Sac lourd', sac: 'lourd' }],
+  },
+
   // ───────────── VARIANTES (vidéo seulement, sans animation) ─────────────
   {
     id: 'lat-raise-sac',

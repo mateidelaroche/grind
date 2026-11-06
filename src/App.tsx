@@ -97,7 +97,7 @@ export default function App() {
       />
     )
   }
-  else if (tab === 'sessions') content = <SessionsList onOpen={(id) => push({ p: 'session', id })} onRunProgram={() => push({ p: 'runprogram' })} />
+  else if (tab === 'sessions') content = <SessionsList onOpen={(id) => push({ p: 'session', id })} onStart={start} onRunProgram={() => push({ p: 'runprogram' })} />
   else if (tab === 'exercises') content = <ExercisesList onOpen={(id) => push({ p: 'exercise', id })} />
   else if (tab === 'history') content = <HistoryScreen onOpen={(id) => push({ p: 'recap', id })} onRunOpen={(id) => push({ p: 'runrecap', id })} onRunProgram={() => push({ p: 'runprogram' })} />
   else content = <Settings onLoops={() => push({ p: 'loops' })} />

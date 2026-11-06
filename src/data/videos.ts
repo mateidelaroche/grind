@@ -73,5 +73,7 @@ export const VIDEOS: Record<string, VideoRef> = {
   "ham-bridge": { id: "vu06oKYEwdY", channel: "Elevated Athlete Development", title: "Hamstring Bridge (On Heels)" },
   "calf-floor": { id: "n-5T_oYc1oU", channel: "Luke Selway | Strength Coaching Online", title: "How to do Standing Calf Raises" },
   "slr": { id: "zo2pqw794B0", channel: "[P]rehab", title: "Straight Leg Raise - Knee Rehab" },
+  "bicycle": { id: "VaL7XWK3MVE", channel: "Medbridge", title: "How to Do a Bicycle Crunch Exercise | 30 Seconds | MedBridge" },
+  "crunch-sac": { id: "UhRf7kzLAmc", channel: "Travis Tarrant", title: "Exercise Tutorial: Weighted Crunch Version 1" },
   "pull-apart-warm": { id: "smSSXITNpCI", channel: "Rogue Fitness", title: "How To Do Band Pull Aparts" },
 }

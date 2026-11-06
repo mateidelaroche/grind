@@ -36,6 +36,7 @@ export const VARIANTS: Record<string, Variant[]> = {
   'dips-bed': [{ ex: 'triceps-oh', reps: '10-15', tempo: '2-0-1' }, diamond],
   'leg-raise': [{ ex: 'dead-bug', reps: '8-10 / côté' }],
   'side-plank': [plank],
+  bicycle: [{ ex: 'dead-bug', reps: '8-10 / côté' }],
   // Séance C
   lunge: [{ ex: 'lunge', level: 0, reps: '8-12 / jambe', tempo: '3-0-1' }, { ex: 'bw-squat', reps: '15-20', tempo: '3-1-1' }],
   'box-squat': [{ ex: 'wall-sit', duration: 40, durationLabel: '30-60 s' }, { ex: 'bw-squat', reps: '15-20', tempo: '3-1-1' }],
@@ -45,6 +46,7 @@ export const VARIANTS: Record<string, Variant[]> = {
   rdl: [{ ex: 'rdl', level: 3, reps: '10-12 / jambe', tempo: '3-0-1' }],
   'dead-bug': [legRaise],
   hollow: [plank],
+  'crunch-sac': [{ ex: 'crunch-sac', level: 0, reps: '20-25', tempo: '2-1-1' }, { ex: 'bicycle', reps: '12-15 / côté', tempo: '1-1-1' }],
   // Échauffement et routine genoux
   march: [{ ex: 'step-jack', duration: 45, durationLabel: '45 s' }],
   'pull-apart-warm': [{ ex: 'prone-t', reps: '10' }],

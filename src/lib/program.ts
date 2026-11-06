@@ -44,7 +44,7 @@ export function weekNumber(date: string, start: string): number {
 export interface Phase { key: string; name: string; desc: string }
 export function phaseOf(week: number): Phase {
   if (week <= 0) return { key: 'S0', name: 'Avant-programme', desc: 'Prends tes marques : teste les élastiques, vérifie les ancrages.' }
-  if (week <= 2) return { key: 'learn', name: 'Apprentissage', desc: '1 série en moins par exercice, RIR 3. Priorité à la technique.' }
+  if (week <= 2) return { key: 'learn', name: 'Apprentissage', desc: 'Toutes les séries, RIR 3. Priorité à la technique.' }
   if (week <= 8) return { key: 'build', name: 'Construction', desc: 'Toutes les séries, RIR 1-2. Double progression à fond.' }
   if (week === 9) return { key: 'deload', name: 'Semaine allégée', desc: 'Moitié des séries. Le corps encaisse les progrès.' }
   if (week <= 12) return { key: 'intens', name: 'Intensification', desc: 'Rest-pause sur la dernière série des exos principaux.' }
@@ -115,7 +115,6 @@ export const animOf = (exId: string, lvl: number) => {
 
 export function effectiveSets(sets: number, week: number, routine: boolean) {
   if (routine) return sets
-  if (week <= 2) return Math.max(1, sets - 1)
   if (week === 9) return Math.max(1, Math.ceil(sets / 2))
   return sets
 }

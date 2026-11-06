@@ -335,6 +335,23 @@ const hollowPose = (k: number): Pose =>
   backLying({ p: [112, 145], t: -172 + k, c: 6, h: -160, aN: { a: [-168, -168] }, aF: { a: [-170, -170] }, lN: { a: [-12 + k, -12 + k] }, lF: { a: [-13 + k, -13 + k] }, fN: -30 })
 const hollow: AnimDef = { keys: [hollowPose(0), hollowPose(2)], dur: [1.6, 1.6], hold: [0.2, 0.2] }
 
+const crunchPose = (up: boolean): Pose =>
+  backLying({
+    p: [104, 145], t: up ? -152 : 180, c: up ? 10 : 0, h: up ? -135 : 182,
+    aN: { ik: { j: 'chest', o: [6, -6] }, bend: -1 }, aF: { ik: { j: 'chest', o: [7, -5] }, bend: -1 },
+    lN: { ik: [136, FL] }, lF: { ik: [133, FL] },
+  })
+const crunchFloor: AnimDef = { ecc: 1, keys: [crunchPose(false), crunchPose(true)], dur: [1.0, 1.3], hold: [0.3, 0.6] }
+
+const bent: Limb = { a: [-75, 15] }, long: Limb = { a: [-14, -14] }
+const bikePose = (near: boolean): Pose =>
+  backLying({
+    t: -158, c: 10, h: -140,
+    aN: { ik: { j: 'head', o: [-3, 2] }, bend: -1 }, aF: { ik: { j: 'head', o: [-2, 3] }, bend: -1 },
+    lN: near ? bent : long, lF: near ? long : bent, fN: -30, fF: -30,
+  })
+const bicycle: AnimDef = { keys: [bikePose(true), bikePose(false)], dur: [0.9, 0.9], hold: [0.5, 0.5] }
+
 // ───────────── ÉCHAUFFEMENT ─────────────
 const march: AnimDef = {
   keys: [
@@ -578,7 +595,7 @@ export const ANIMS: Record<string, AnimDef> = {
   lunge, 'lunge-bulgare': lungeBulgare, 'box-squat': boxSquat, calf, 'hip-thrust': hipThrust,
   'leg-curl': legCurl, rdl,
   'leg-curl-uni': legCurlUni, 'row-seated-uni': rowSeatedUni, 'pulldown-uni': pulldownUni, 'hip-thrust-uni': hipThrustUni, 'rdl-uni': rdlUni,
-  'crunch-band': crunchBand, plank, 'leg-raise': legRaise, 'side-plank': sidePlank, 'dead-bug': deadBug, hollow,
+  'crunch-band': crunchBand, plank, 'leg-raise': legRaise, 'side-plank': sidePlank, 'dead-bug': deadBug, hollow, 'crunch-sac': crunchFloor, bicycle,
   march, 'arm-circles': armCircles, 'cat-cow': catCow, 'scap-pushup': scapPushup, inchworm,
   'glute-bridge': gluteBridge, clamshell, tke, 'tib-raise': tibRaise, 'wall-sit': wallSit, 'bw-squat': bwSquat,
   'shadow-box': shadowBox, 'step-jack': stepJack, climber,
@@ -606,6 +623,7 @@ const LEVEL_GEAR: Record<string, { sac?: Target; bands?: BandDef[] }> = {
   lunge: { sac: { j: 'chest', b: [-2, 12] } },
   calf: { sac: { j: 'chest', b: [-2, 12] } },
   plank: { sac: { j: 'pelvis', b: [4, 11] } },
+  'crunch-sac': { sac: { j: 'chest', b: [0, -11] } },
 }
 
 /** Animation qui montre exactement le matériel du niveau choisi (élastique, sac… ou rien). */

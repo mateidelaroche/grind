@@ -7,7 +7,8 @@ const A: Session = {
   kind: 'muscu',
   warmup: 'general',
   cooldown: true,
-  duration: '~40 min',
+  duration: '~65 min',
+  expressDuration: '~40 min',
   blocks: [
     { id: 'A', rest: 90, express: true, restPause: true, items: [
       { ex: 'pushup', sets: 4, reps: '8-12', tempo: '3-1-1', level: 0 },
@@ -18,16 +19,16 @@ const A: Session = {
       { ex: 'pulldown-kneel', sets: 3, reps: '10-15', tempo: '2-0-1', level: 1 },
     ] },
     { id: 'C', rest: 60, items: [
-      { ex: 'lat-raise', sets: 3, reps: '12-20', tempo: '2-1-1', level: 0 },
-      { ex: 'face-pull', sets: 3, reps: '15-20', tempo: '2-1-1', level: 0 },
+      { ex: 'lat-raise', sets: 4, reps: '12-20', tempo: '2-1-1', level: 0 },
+      { ex: 'face-pull', sets: 4, reps: '15-20', tempo: '2-1-1', level: 0 },
     ] },
     { id: 'D', rest: 60, items: [
       { ex: 'curl', sets: 3, reps: '10-15', tempo: '3-0-1', level: 1 },
       { ex: 'triceps-oh', sets: 3, reps: '10-15', tempo: '2-0-1', level: 1 },
     ] },
     { id: 'E', rest: 45, express: true, items: [
-      { ex: 'crunch-band', sets: 3, reps: '12-15', tempo: '2-1-1', level: 1 },
-      { ex: 'plank', sets: 3, duration: 30, durationLabel: '30-60 s', level: 0 },
+      { ex: 'crunch-band', sets: 4, reps: '12-15', tempo: '2-1-1', level: 1 },
+      { ex: 'plank', sets: 4, duration: 30, durationLabel: '30-60 s', level: 0 },
     ] },
   ],
 }
@@ -39,7 +40,8 @@ const B: Session = {
   kind: 'muscu',
   warmup: 'general',
   cooldown: true,
-  duration: '~40 min',
+  duration: '~70 min',
+  expressDuration: '~50 min',
   blocks: [
     { id: 'A', rest: 90, express: true, restPause: true, items: [
       { ex: 'pike', sets: 4, reps: '6-12', tempo: '2-0-1', level: 0 },
@@ -58,8 +60,9 @@ const B: Session = {
       { ex: 'dips-bed', sets: 3, reps: '8-15', tempo: '2-0-1', level: 0 },
     ] },
     { id: 'E', rest: 45, express: true, items: [
-      { ex: 'leg-raise', sets: 3, reps: '10-15', tempo: '2-0-1', level: 1 },
-      { ex: 'side-plank', sets: 3, duration: 30, durationLabel: '30-45 s / côté', level: 0 },
+      { ex: 'leg-raise', sets: 4, reps: '10-15', tempo: '2-0-1', level: 1 },
+      { ex: 'side-plank', sets: 4, duration: 30, durationLabel: '30-45 s / côté', level: 0 },
+      { ex: 'bicycle', sets: 3, reps: '12-15 / côté', tempo: '1-1-1' },
     ] },
   ],
 }
@@ -71,7 +74,8 @@ const C: Session = {
   kind: 'muscu',
   warmup: 'genoux',
   cooldown: true,
-  duration: '~40 min',
+  duration: '~70 min',
+  expressDuration: '~40 min',
   blocks: [
     { id: 'A', rest: 60, express: true, restPause: true, items: [
       { ex: 'lunge', sets: 3, reps: '8-12 / jambe', tempo: '3-0-1', level: 0, minLevelFromWeek: { 4: 1 } },
@@ -86,10 +90,11 @@ const C: Session = {
     ] },
     { id: 'D', rest: 60, items: [
       { ex: 'rdl', sets: 3, reps: '12-15', tempo: '3-0-1', level: 2 },
-      { ex: 'dead-bug', sets: 3, reps: '8-10 / côté' },
+      { ex: 'dead-bug', sets: 4, reps: '8-10 / côté' },
     ] },
-    { id: 'E', rest: 30, express: true, items: [
-      { ex: 'hollow', sets: 3, duration: 20, durationLabel: '20-30 s', level: 0 },
+    { id: 'E', rest: 45, express: true, items: [
+      { ex: 'hollow', sets: 4, duration: 20, durationLabel: '20-30 s', level: 0 },
+      { ex: 'crunch-sac', sets: 3, reps: '12-15', tempo: '2-1-1', level: 1 },
     ] },
   ],
 }

@@ -48,7 +48,7 @@ export function notifyPlan(s: {
       list.push({
         slot: weekend ? 'aprem' : 'soir',
         title: `💪 ${ses.name} ${weekend ? 'aujourd’hui' : 'ce soir'}`,
-        body: `${ses.subtitle} · ${ses.duration}. Pas le temps ? Fais l’express en 25 min.`,
+        body: `${ses.subtitle} · ${ses.duration}. Pas le temps ? Fais l’express (${ses.expressDuration}).`,
       })
     } else if (plan.type === 'basket') {
       list.push({

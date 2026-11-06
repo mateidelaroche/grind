@@ -5,7 +5,7 @@ import { applyTempo, poseAt, skeleton, cycleLength } from './anim/rig'
 import { EXERCISES } from './data/exercises'
 import { SESSIONS } from './data/sessions'
 import { VIDEOS } from './data/videos'
-import { buildSteps, dayPlan, lastReps, repRange, suggestions, weightTrend } from './lib/program'
+import { effectiveSets, buildSteps, dayPlan, lastReps, repRange, suggestions, weightTrend } from './lib/program'
 import { VARIANTS } from './data/variants'
 import { autoSwaps, clashes, optionsFor, problemsFor, shiftReps } from './lib/variants'
 import type { SessionId, SetRecord, Swap, Workout } from './types'
@@ -87,6 +87,22 @@ describe('progression', () => {
   })
 })
 
+describe('volume des séances', () => {
+  it('toutes les séries dès la semaine 1, moitié en semaine 9', () => {
+    expect(effectiveSets(4, 1, false)).toBe(4)
+    expect(effectiveSets(4, 2, false)).toBe(4)
+    expect(effectiveSets(4, 9, false)).toBe(2)
+  })
+  it('chaque séance a sa durée express et un exercice d’abdos dynamique en express', () => {
+    const dynamic = ['crunch-band', 'leg-raise', 'bicycle', 'crunch-sac']
+    for (const id of ['A', 'B', 'C'] as const) {
+      expect(SESSIONS[id].expressDuration, id).toBeDefined()
+      const exs = SESSIONS[id].blocks.filter((b) => b.express).flatMap((b) => b.items.map((i) => i.ex))
+      expect(exs.some((e) => dynamic.includes(e)), id).toBe(true)
+    }
+  })
+})
+
 describe('variantes', () => {
   const ctx = { levels: {}, unavailable: [] }
   const item = (ex: string) => Object.values(SESSIONS).flatMap((s) => s.blocks.flatMap((b) => b.items)).find((i) => i.ex === ex)!
@@ -136,17 +152,17 @@ describe('variantes', () => {
   it('remplace les séries restantes et garde celles déjà faites', () => {
     const swaps: Record<string, Swap[]> = { 'main:A:C:1': [{ ex: 'pull-apart', level: 0, reps: '15-20', fromRound: 2 }] }
     const steps = buildSteps('A', { ...opts(3), swaps }).filter((s) => s.slot === 'main:A:C:1')
-    expect(steps.map((s) => s.ex)).toEqual(['face-pull', 'pull-apart', 'pull-apart'])
-    expect(steps.map((s) => s.recKey)).toEqual(['C:1', 'C:1~pull-apart@0', 'C:1~pull-apart@0'])
-    expect(steps.map((s) => s.recTotal)).toEqual([1, 2, 2])
-    expect(steps.map((s) => s.recRound)).toEqual([1, 1, 2])
+    expect(steps.map((s) => s.ex)).toEqual(['face-pull', 'pull-apart', 'pull-apart', 'pull-apart'])
+    expect(steps.map((s) => s.recKey)).toEqual(['C:1', 'C:1~pull-apart@0', 'C:1~pull-apart@0', 'C:1~pull-apart@0'])
+    expect(steps.map((s) => s.recTotal)).toEqual([1, 3, 3, 3])
+    expect(steps.map((s) => s.recRound)).toEqual([1, 1, 2, 3])
     expect(steps[1].orig?.ex).toBe('face-pull')
   })
   it('revenir à l’exercice d’origine reprend son enregistrement', () => {
     const swaps: Record<string, Swap[]> = { 'main:A:C:1': [{ ex: 'pull-apart', level: 0, fromRound: 2 }, { ex: 'face-pull', level: 0, fromRound: 3, orig: true }] }
     const steps = buildSteps('A', { ...opts(3), swaps }).filter((s) => s.slot === 'main:A:C:1')
-    expect(steps.map((s) => s.ex)).toEqual(['face-pull', 'pull-apart', 'face-pull'])
-    expect(steps.map((s) => s.recTotal)).toEqual([2, 1, 2])
+    expect(steps.map((s) => s.ex)).toEqual(['face-pull', 'pull-apart', 'face-pull', 'face-pull'])
+    expect(steps.map((s) => s.recTotal)).toEqual([3, 1, 3, 3])
     expect(steps[2].recRound).toBe(2)
   })
   it('une variante en temps à la place de reps donne bien un chrono', () => {
