@@ -1,6 +1,6 @@
 import { EXERCISES } from '../data/exercises'
 import { NOISY, ROOMY, VARIANTS, type Variant } from '../data/variants'
-import { buildSteps, gearForExercise, levelOf, programLevel, type BuildOpts } from './program'
+import { buildSteps, gearForExercise, JUMPS, levelOf, programLevel, type BuildOpts } from './program'
 import type { Band, Item, Problem, SessionId, Swap, Unavailable } from '../types'
 
 export type SwapChoice = Omit<Swap, 'fromRound' | 'orig'>
@@ -61,7 +61,7 @@ function pickLevel(v: Variant, levels: Record<string, number>, blocked: Blocked)
   return all.map((l, i) => ({ l, i })).filter((x) => !x.l.uni && !clashes(v.ex, x.i, blocked)).sort((a, b) => Math.abs(a.i - base) - Math.abs(b.i - base))[0]?.i
 }
 
-export interface Ctx { levels: Record<string, number>; unavailable: Unavailable[] }
+export interface Ctx { levels: Record<string, number>; unavailable: Unavailable[]; noJumps?: boolean }
 export interface Base { ex: string; level: number; item: Item }
 
 const problemBlocks = (p: Problem | undefined, current: { ex: string; level: number }): Unavailable[] => {
@@ -103,7 +103,10 @@ export function autoSwaps(sid: SessionId, o: BuildOpts, ctx: Ctx, planned: Recor
     if (st.kind !== 'work' || !st.slot || seen.has(st.slot)) continue
     seen.add(st.slot)
     const p = planned[st.ex!]
-    if (p && !clashes(p.ex, p.level, blocked)) {
+    if (ctx.noJumps && JUMPS.includes(st.ex!)) {
+      const first = optionsFor({ ex: st.ex!, level: st.level ?? 0, item: st.item! }, ctx)[0]
+      if (first) swaps[st.slot] = [{ ...first, fromRound: 1 }]
+    } else if (p && !clashes(p.ex, p.level, blocked)) {
       swaps[st.slot] = [{ ...p, fromRound: 1 }]
       used.push(st.ex!)
     } else if (clashes(st.ex!, st.level ?? 0, blocked)) {

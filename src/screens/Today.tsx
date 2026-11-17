@@ -1,9 +1,9 @@
 import { useState, type ReactNode } from 'react'
 import { COACH_LINES, pick } from '../data/coach'
-import { SESSIONS } from '../data/sessions'
+import { JUMPS_IN, SESSIONS } from '../data/sessions'
 import { GearLine, Sheet, Stepper, toast } from '../components/ui'
 import {
-  addDays, DAY_LONG, DAY_SHORT, dayPlan, diffDays, formatDate, legWarning, mondayOf, phaseOf, PROGRAM_WEEKS,
+  addDays, DAY_LONG, DAY_SHORT, dayPlan, diffDays, formatDate, legWarning, mondayOf, noJumpsReason, recentKnee, phaseOf, PROGRAM_WEEKS,
   isRunDay, nextRunDay, runStartOf, sessionGear, today, weekday, weekNumber,
 } from '../lib/program'
 import { useStore } from '../store'
@@ -136,7 +136,7 @@ export default function Today({ onStart, onOpenSession, onOpenWorkout, onSetting
       {/* À faire aujourd'hui : uniquement ce qui reste ; ce qui est fait descend en une ligne plus bas */}
       <div className="section-title">À faire aujourd’hui</div>
       {!stretchedToday && matinCard}
-      {runToday && !runsToday.length && <RunTodayCard onRun={onRun} onOpen={onRunOpen} />}
+      {runToday && !runsToday.length && <RunTodayCard onRun={onRun} onOpen={onRunOpen} onKnee={() => onStart('GENOUX', false)} />}
       {plan.type === 'session' && !doneToday.length && (() => {
         const ses = SESSIONS[plan.session]
         return (
@@ -149,7 +149,10 @@ export default function Today({ onStart, onOpenSession, onOpenWorkout, onSetting
               <div className="ex-name">{ses.name}</div>
               <div className="muted">{ses.subtitle}</div>
             </div>
-            {legWarning(plan.session, d) && <div className="badge warn" style={{ height: 'auto', padding: 8 }}>⚠️ Jambes la veille d’un basket : allège ou décale si tu peux.</div>}
+            {legWarning(plan.session, d, s.overrides) && <div className="badge warn" style={{ height: 'auto', padding: 8 }}>⚠️ Jambes deux jours de suite : allège ou décale si tu peux.</div>}
+            {JUMPS_IN(plan.session) && noJumpsReason(week, recentKnee(s.runs, s.basket, d)) && (
+              <div className="small muted">🦵 {noJumpsReason(week, recentKnee(s.runs, s.basket, d))} Squats lents et mollets au sol à la place.</div>
+            )}
             {(
               <>
                 <GearLine gear={sessionGear(plan.session, opts)} />
@@ -330,12 +333,12 @@ export default function Today({ onStart, onOpenSession, onOpenWorkout, onSetting
           <div className="ex-name">Déplacer {SESSIONS[plan.session].name}</div>
           <div className="small muted">
             {nextDays.some((date) => dayPlan(date, s.overrides).type === 'rest')
-              ? 'Choisis un jour libre : une journée ne peut contenir qu’une séance ou un basket.'
+              ? 'Choisis un jour libre : une seule séance par jour.'
               : 'Aucun jour libre cette semaine : fais-la aujourd’hui ou laisse-la passer.'}
           </div>
           {nextDays.map((date) => {
             const p = dayPlan(date, s.overrides)
-            const warn = legWarning(plan.session, date)
+            const warn = legWarning(plan.session, date, s.overrides, d)
             const busy = p.type !== 'rest'
             return (
               <button key={date} className="level" disabled={busy} style={busy ? { opacity: 0.5 } : undefined} onClick={() => move(date)}>
@@ -344,7 +347,7 @@ export default function Today({ onStart, onOpenSession, onOpenWorkout, onSetting
                   <span style={{ fontWeight: 600, textTransform: 'capitalize' }}>{formatDate(date)}</span>
                   <span className="small muted" style={{ display: 'block' }}>
                     {p.type === 'session' ? `Déjà : ${SESSIONS[p.session].name}, choisis un autre jour` : p.type === 'basket' ? 'Basket ce jour-là, choisis un autre jour' : 'Libre'}
-                    {warn && <span style={{ color: 'var(--warn)' }}> · ⚠️ veille de basket</span>}
+                    {warn && <span style={{ color: 'var(--warn)' }}> · ⚠️ jambes deux jours de suite</span>}
                   </span>
                 </span>
               </button>

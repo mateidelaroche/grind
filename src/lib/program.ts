@@ -1,9 +1,9 @@
 import { EXERCISES } from '../data/exercises'
 import { gearAnim } from '../anim/anims'
-import { RUN_DAYS } from '../data/running'
-import { SESSIONS } from '../data/sessions'
+import { kneeOf, RUN_DAYS } from '../data/running'
+import { LEG_SESSIONS, SESSIONS } from '../data/sessions'
 import { VIDEOS, type VideoRef } from '../data/videos'
-import type { Band, Block, DayPlan, Equip, Item, ItemEdit, Level, Sac, SessionId, Swap, Workout } from '../types'
+import type { Band, BasketLog, Block, DayPlan, Equip, Item, ItemEdit, Level, RunLog, Sac, SessionId, Swap, Workout } from '../types'
 
 // ───────────── Dates (heure locale) ─────────────
 export const toISO = (d: Date) => {
@@ -35,6 +35,8 @@ export const DEFAULT_START = '2026-11-02'
 /** Ancienne date de début (programme décalé d'une semaine le 28/10/2026). */
 export const OLD_START = '2026-10-26'
 export const PROGRAM_WEEKS = 12
+/** Semaine allégée : avancée en S7 avec le passage à 5 séances par semaine. */
+export const DELOAD_WEEK = 7
 
 export function weekNumber(date: string, start: string): number {
   const d = diffDays(date, start)
@@ -45,34 +47,61 @@ export interface Phase { key: string; name: string; desc: string }
 export function phaseOf(week: number): Phase {
   if (week <= 0) return { key: 'S0', name: 'Avant-programme', desc: 'Prends tes marques : teste les élastiques, vérifie les ancrages.' }
   if (week <= 2) return { key: 'learn', name: 'Apprentissage', desc: 'Toutes les séries, RIR 3. Priorité à la technique.' }
-  if (week <= 8) return { key: 'build', name: 'Construction', desc: 'Toutes les séries, RIR 1-2. Double progression à fond.' }
-  if (week === 9) return { key: 'deload', name: 'Semaine allégée', desc: 'Moitié des séries. Le corps encaisse les progrès.' }
+  if (week === DELOAD_WEEK) return { key: 'deload', name: 'Semaine allégée', desc: 'Moitié des séries, pas de sauts. Le corps encaisse les progrès.' }
+  if (week <= 9) return { key: 'build', name: 'Construction', desc: 'Toutes les séries, RIR 1-2. Double progression à fond.' }
   if (week <= 12) return { key: 'intens', name: 'Intensification', desc: 'Rest-pause sur la dernière série des exos principaux.' }
   return { key: 'build', name: 'Après le programme', desc: 'Fais le bilan avec ton coach. En attendant : construction.' }
 }
 
-const BASE_WEEK: DayPlan[] = [
-  { type: 'basket' },
-  { type: 'session', session: 'C' },
-  { type: 'session', session: 'A' },
-  { type: 'basket' },
-  { type: 'rest' },
-  { type: 'basket', match: true },
-  { type: 'session', session: 'B' },
-]
+const ses = (session: SessionId): DayPlan => ({ type: 'session', session })
+const REST: DayPlan = { type: 'rest' }
 
-export const isBasketDay = (date: string) => BASE_WEEK[weekday(date)].type === 'basket'
+/** Semaine avec le basket (jusqu'au 15/11/2026), gardée pour l'historique. */
+const BASKET_WEEK: DayPlan[] = [
+  { type: 'basket' }, ses('C'), ses('A'), { type: 'basket' }, REST, { type: 'basket', match: true }, ses('B'),
+]
+/** Sans basket (à partir du 16/11/2026) : 5 séances, course mercredi et dimanche, repos le vendredi. */
+export const NEW_WEEK_FROM = '2026-11-16'
+const WEEK: DayPlan[] = [ses('C'), ses('A'), ses('B'), ses('D'), REST, ses('E'), REST]
+/** Semaine de transition : lundi au repos, C déjà faite mardi. */
+const TRANSITION: Record<string, DayPlan> = {
+  '2026-11-16': REST, '2026-11-17': ses('C'), '2026-11-18': ses('B'), '2026-11-19': ses('A'),
+  '2026-11-20': ses('D'), '2026-11-21': REST, '2026-11-22': ses('E'),
+}
+const baseDay = (date: string) => TRANSITION[date] ?? (date < NEW_WEEK_FROM ? BASKET_WEEK : WEEK)[weekday(date)]
 
 export function dayPlan(date: string, overrides: Record<string, string>): DayPlan {
   const o = overrides[date]
-  const base = BASE_WEEK[weekday(date)]
-  if (o === 'rest') return base.type === 'basket' ? base : { type: 'rest' }
+  const base = baseDay(date)
+  if (o === 'rest') return base.type === 'basket' ? base : REST
   if (o) return { type: 'session', session: o as SessionId, moved: true }
   return base
 }
 
-/** Séance jambes la veille d'un basket ? */
-export const legWarning = (session: SessionId, date: string) => session === 'C' && isBasketDay(addDays(date, 1))
+/** Exercices avec sauts : remplacés quand le genou gêne ou en semaine allégée. */
+export const JUMPS = ['squat-jump', 'pogo']
+/** Note de genou au-delà de laquelle on ne saute pas. */
+export const KNEE_JUMPS = 2
+/** Pire note de genou des 2 derniers jours (sorties, ancien basket). */
+export function recentKnee(runs: RunLog[], basket: Record<string, BasketLog>, date: string) {
+  const days = [addDays(date, -1), addDays(date, -2)]
+  return Math.max(0, ...runs.filter((r) => days.includes(r.date)).map(kneeOf), ...days.map((x) => basket[x]?.knee ?? 0))
+}
+/** Pourquoi pas de sauts aujourd'hui (rien si on peut sauter). */
+export function noJumpsReason(week: number, knee: number) {
+  if (week === DELOAD_WEEK) return 'Semaine allégée : pas de sauts.'
+  if (knee > KNEE_JUMPS) return `Genou à ${knee}/10 ces derniers jours : pas de sauts.`
+}
+
+/** Séance jambes la veille ou le lendemain d'une autre séance jambes ? `from` : jour libéré par un déplacement. */
+export function legWarning(session: SessionId, date: string, overrides: Record<string, string>, from?: string) {
+  if (!LEG_SESSIONS.includes(session)) return false
+  const ov = from ? { ...overrides, [from]: 'rest' } : overrides
+  return [addDays(date, -1), addDays(date, 1)].some((x) => {
+    const p = dayPlan(x, ov)
+    return p.type === 'session' && LEG_SESSIONS.includes(p.session)
+  })
+}
 
 // ───────────── Niveaux / matériel ─────────────
 export function effectiveLevel(exId: string, item: Item, userLevels: Record<string, number>, week: number, routine: boolean): number {
@@ -115,7 +144,7 @@ export const animOf = (exId: string, lvl: number) => {
 
 export function effectiveSets(sets: number, week: number, routine: boolean) {
   if (routine) return sets
-  if (week === 9) return Math.max(1, Math.ceil(sets / 2))
+  if (week === DELOAD_WEEK) return Math.max(1, Math.ceil(sets / 2))
   return sets
 }
 

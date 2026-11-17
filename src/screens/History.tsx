@@ -6,7 +6,7 @@ import { recordsOfWorkout } from '../lib/records'
 import { BodyTab, RecordsTab } from './Body'
 import { RunHistoryTab } from './RunViews'
 import { EXERCISES } from '../data/exercises'
-import { SESSIONS } from '../data/sessions'
+import { MAIN_SESSIONS, SESSIONS } from '../data/sessions'
 import { IconBack } from '../components/icons'
 import { toast } from '../components/ui'
 import { addDays, formatDate, fromISO, levelOf, mondayOf, suggestions, today } from '../lib/program'
@@ -127,7 +127,7 @@ function WeekMuscles() {
   const heat = setsPerMuscle(sets)
   const total = Object.values(heat).reduce((a, v) => a + v, 0)
   // Zones que le programme travaille mais qui n'ont rien reçu cette semaine
-  const programmed = new Set((['A', 'B', 'C'] as const).flatMap((sid) => workOfSession(sid).p))
+  const programmed = new Set(MAIN_SESSIONS.flatMap((sid) => workOfSession(sid).p))
   const missed = ALL_MUSCLES.filter((m) => programmed.has(m) && heat[m] === 0)
   return (
     <div className="card">

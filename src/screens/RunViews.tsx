@@ -70,6 +70,9 @@ export function RunRecap({ id, fresh, onBack, onStartSession }: { id: string; fr
       {fresh && plan.type === 'session' && !muscuDone && r.date === today() && (
         <button className="btn primary big block" onClick={() => onStartSession(plan.session)}>Enchaîner : {SESSIONS[plan.session].name} 💪</button>
       )}
+      {fresh && plan.type !== 'session' && r.date === today() && !s.workouts.some((w) => w.date === r.date && w.session === 'MATIN' && w.completed) && (
+        <button className="btn primary big block" onClick={() => onStartSession('MATIN')}>Enchaîner : étirements · {SESSIONS.MATIN.duration} 🧘</button>
+      )}
 
       <div className="stats">
         {!r.indoor && <div className="stat"><span className="big-num">{fmtKm(r.dist)}</span><span className="tiny muted">km</span></div>}
@@ -178,7 +181,7 @@ export function RunProgram({ onBack, onRun }: { onBack: () => void; onRun: (k: R
 }
 
 // ───────────── Carte « Aujourd'hui » ─────────────
-export function RunTodayCard({ onRun, onOpen }: { onRun: (k: RunKind) => void; onOpen: (id: string) => void }) {
+export function RunTodayCard({ onRun, onOpen, onKnee }: { onRun: (k: RunKind) => void; onOpen: (id: string) => void; onKnee?: () => void }) {
   const s = useStore()
   const d = today()
   const { index } = runProgress(s.runs)
@@ -186,6 +189,7 @@ export function RunTodayCard({ onRun, onOpen }: { onRun: (k: RunKind) => void; o
   const r = RUN_PLAN[index]
   if (!r) return null
   const last = doneToday.at(-1)
+  const kneeDone = s.workouts.some((w) => w.date === d && w.session === 'GENOUX' && w.completed)
   return (
     <div className="card accent">
       <div className="row between">
@@ -201,8 +205,11 @@ export function RunTodayCard({ onRun, onOpen }: { onRun: (k: RunKind) => void; o
         <>
           <div>
             <div className="ex-name">🏃 {r.title}</div>
-            <div className="muted small">Sortie {index + 1}/{RUN_PLAN.length} · semaine {r.week} · avant ta séance muscu</div>
+            <div className="muted small">Sortie {index + 1}/{RUN_PLAN.length} · semaine {r.week}{dayPlan(d, s.overrides).type === 'session' ? ' · muscu à un autre moment de la journée' : ''}</div>
           </div>
+          {onKnee && (kneeDone
+            ? <div className="small muted">✅ Routine genoux faite</div>
+            : <button className="btn block" onClick={onKnee}>🦵 Routine genoux avant de partir · 7 min</button>)}
           <button className="btn primary big block" onClick={() => onRun({ plan: index })}>Partir courir</button>
           <button className="btn block" onClick={() => onRun({ indoor: true })}>🌧️ Impossible de sortir → cardio chambre</button>
         </>

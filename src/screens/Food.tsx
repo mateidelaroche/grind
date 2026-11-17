@@ -5,7 +5,7 @@ import type { FoodLog } from '../types'
 
 const HABITS: { key: keyof FoodLog; icon: string; title: string; desc: string }[] = [
   { key: 'lait', icon: '🥛', title: 'Verre de lait après la séance', desc: 'Ou un fromage blanc / yaourt. 30 secondes, pas cher.' },
-  { key: 'gouter', icon: '🍌', title: 'Goûter enrichi', desc: 'Les jours de basket : banane + pain + beurre de cacahuète ou jambon.' },
+  { key: 'gouter', icon: '🍌', title: 'Goûter enrichi', desc: 'Les jours de course ou de séance jambes : banane + pain + beurre de cacahuète ou jambon.' },
   { key: 'sandwich', icon: '🥪', title: 'Sandwich avec protéine', desc: 'Poulet, thon, œuf ou jambon. Ou prends-en deux.' },
 ]
 

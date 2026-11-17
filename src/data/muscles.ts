@@ -79,6 +79,8 @@ export const EX_MUSCLES: Record<string, Work> = {
   'tib-raise': w(['tibias']),
   'wall-sit': w(['quadriceps', 'vasteInterne'], ['fessiers'], ['abdos']),
   'bw-squat': w([], ['quadriceps', 'fessiers'], ['abdos']),
+  'squat-jump': w(['quadriceps', 'fessiers'], ['mollets'], ['abdos']),
+  pogo: w(['mollets'], ['tibias']),
   'shadow-box': w(['deltAvant'], ['triceps', 'obliques', 'dentele'], ['mollets', 'abdos']),
   'step-jack': w(['deltLat'], ['moyenFessier', 'adducteurs', 'mollets'], ['abdos']),
   climber: w(['abdos', 'flechisseurs'], ['quadriceps', 'obliques'], ['deltAvant', 'dentele']),

@@ -46,6 +46,14 @@ export const VARIANTS: Record<string, Variant[]> = {
   rdl: [{ ex: 'rdl', level: 3, reps: '10-12 / jambe', tempo: '3-0-1' }],
   'dead-bug': [legRaise],
   hollow: [plank],
+  // Séance D : sans saut (genou, bruit), on garde le geste au ralenti.
+  'squat-jump': [{ ex: 'bw-squat', reps: '8-10', tempo: '3-0-1' }],
+  pogo: [{ ex: 'calf-floor', reps: '20-25', tempo: '1-0-1' }],
+  'tib-raise': [{ ex: 'calf-floor', reps: '20-25', tempo: '1-0-1' }],
+  'ham-bridge': [{ ex: 'glute-bridge', reps: '15-20', tempo: '2-1-1' }],
+  // Séance E
+  'lat-raise-sac': [{ ex: 'lat-raise', reps: '12-20', tempo: '2-1-1' }],
+  'prone-t': [{ ex: 'pull-apart', reps: '15-20', tempo: '2-1-1' }],
   'crunch-sac': [{ ex: 'crunch-sac', level: 0, reps: '20-25', tempo: '2-1-1' }, { ex: 'bicycle', reps: '12-15 / côté', tempo: '1-1-1' }],
   // Échauffement et routine genoux
   march: [{ ex: 'step-jack', duration: 45, durationLabel: '45 s' }],
@@ -55,6 +63,6 @@ export const VARIANTS: Record<string, Variant[]> = {
 }
 
 /** Exercices à écarter quand il faut faire peu de bruit. */
-export const NOISY = new Set(['march'])
+export const NOISY = new Set(['march', 'squat-jump', 'pogo'])
 /** Exercices à écarter quand la place manque (corps allongé de tout son long, avec un meuble). */
 export const ROOMY = new Set(['pushup-decline', 'inchworm'])

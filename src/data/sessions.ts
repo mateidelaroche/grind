@@ -7,18 +7,18 @@ const A: Session = {
   kind: 'muscu',
   warmup: 'general',
   cooldown: true,
-  duration: '~65 min',
+  duration: '~60 min',
   expressDuration: '~40 min',
   blocks: [
-    { id: 'A', rest: 90, express: true, restPause: true, items: [
+    { id: 'A', rest: 120, express: true, restPause: true, items: [
       { ex: 'pushup', sets: 4, reps: '8-12', tempo: '3-1-1', level: 0 },
       { ex: 'row-seated', sets: 4, reps: '10-15', tempo: '2-0-1', level: 1, note: '+ 1 s serré' },
     ] },
-    { id: 'B', rest: 75, express: true, restPause: true, items: [
-      { ex: 'pushup-decline', sets: 3, reps: '8-12', tempo: '2-0-1', level: 0 },
-      { ex: 'pulldown-kneel', sets: 3, reps: '10-15', tempo: '2-0-1', level: 1 },
+    { id: 'B', rest: 90, express: true, restPause: true, items: [
+      { ex: 'pushup-decline', sets: 4, reps: '8-12', tempo: '2-0-1', level: 0 },
+      { ex: 'pulldown-kneel', sets: 4, reps: '10-15', tempo: '2-0-1', level: 1 },
     ] },
-    { id: 'C', rest: 60, items: [
+    { id: 'C', rest: 75, items: [
       { ex: 'lat-raise', sets: 4, reps: '12-20', tempo: '2-1-1', level: 0 },
       { ex: 'face-pull', sets: 4, reps: '15-20', tempo: '2-1-1', level: 0 },
     ] },
@@ -41,23 +41,23 @@ const B: Session = {
   warmup: 'general',
   cooldown: true,
   duration: '~70 min',
-  expressDuration: '~50 min',
+  expressDuration: '~45 min',
   blocks: [
-    { id: 'A', rest: 90, express: true, restPause: true, items: [
+    { id: 'A', rest: 120, express: true, restPause: true, items: [
       { ex: 'pike', sets: 4, reps: '6-12', tempo: '2-0-1', level: 0 },
       { ex: 'row-backpack', sets: 4, reps: '8-12 / bras', tempo: '2-1-1', level: 1 },
     ] },
-    { id: 'B', rest: 75, express: true, restPause: true, items: [
-      { ex: 'pushup-diamond', sets: 3, reps: '8-15', tempo: '2-0-1', level: 1 },
-      { ex: 'pullover', sets: 3, reps: '12-15', tempo: '2-1-1', level: 1 },
+    { id: 'B', rest: 90, express: true, restPause: true, items: [
+      { ex: 'pushup-diamond', sets: 4, reps: '8-15', tempo: '2-0-1', level: 1 },
+      { ex: 'pullover', sets: 4, reps: '12-15', tempo: '2-1-1', level: 1 },
     ] },
-    { id: 'C', rest: 60, items: [
+    { id: 'C', rest: 75, items: [
       { ex: 'fly-band', sets: 3, reps: '12-15 / bras', tempo: '2-1-1', level: 0 },
       { ex: 'pull-apart', sets: 3, reps: '15-20', tempo: '2-1-1', level: 0 },
     ] },
     { id: 'D', rest: 60, items: [
-      { ex: 'hammer', sets: 3, reps: '10-15', tempo: '3-0-1', level: 1 },
-      { ex: 'dips-bed', sets: 3, reps: '8-15', tempo: '2-0-1', level: 0 },
+      { ex: 'hammer', sets: 4, reps: '10-15', tempo: '3-0-1', level: 1 },
+      { ex: 'dips-bed', sets: 4, reps: '8-15', tempo: '2-0-1', level: 0 },
     ] },
     { id: 'E', rest: 45, express: true, items: [
       { ex: 'leg-raise', sets: 4, reps: '10-15', tempo: '2-0-1', level: 1 },
@@ -67,34 +67,94 @@ const B: Session = {
   ],
 }
 
+/** Jambes 1 : surtout l'avant des cuisses (fentes, squats), plus les abdos. */
 const C: Session = {
   id: 'C',
   name: 'Séance C',
-  subtitle: 'Bas du corps + Abdos',
+  subtitle: 'Jambes · Cuisses + abdos',
   kind: 'muscu',
   warmup: 'genoux',
   cooldown: true,
-  duration: '~70 min',
-  expressDuration: '~40 min',
+  duration: '~55 min',
+  expressDuration: '~30 min',
   blocks: [
-    { id: 'A', rest: 60, express: true, restPause: true, items: [
-      { ex: 'lunge', sets: 3, reps: '8-12 / jambe', tempo: '3-0-1', level: 0, minLevelFromWeek: { 4: 1 } },
+    { id: 'A', rest: 90, express: true, restPause: true, items: [
+      { ex: 'lunge', sets: 4, reps: '8-12 / jambe', tempo: '3-0-1', level: 0, minLevelFromWeek: { 4: 1 } },
     ] },
-    { id: 'B', rest: 60, restPause: true, items: [
-      { ex: 'box-squat', sets: 3, reps: '12-15', tempo: '3-1-1', level: 1 },
+    { id: 'B', rest: 75, restPause: true, items: [
+      { ex: 'box-squat', sets: 4, reps: '12-15', tempo: '3-1-1', level: 1 },
       { ex: 'calf', sets: 3, reps: '15-20 / jambe', tempo: '2-1-1', level: 0 },
     ] },
-    { id: 'C', rest: 75, express: true, items: [
-      { ex: 'hip-thrust', sets: 4, reps: '10-15', tempo: '2-1-1', level: 1, note: '2 s serré en haut' },
-      { ex: 'leg-curl', sets: 3, reps: '10-15', tempo: '2-1-1', level: 0 },
-    ] },
-    { id: 'D', rest: 60, items: [
-      { ex: 'rdl', sets: 3, reps: '12-15', tempo: '3-0-1', level: 2 },
-      { ex: 'dead-bug', sets: 4, reps: '8-10 / côté' },
+    { id: 'C', rest: 60, items: [
+      { ex: 'wall-sit', sets: 3, duration: 40, durationLabel: '40-60 s' },
+      { ex: 'tib-raise', sets: 3, reps: '15-20', tempo: '1-1-2' },
     ] },
     { id: 'E', rest: 45, express: true, items: [
       { ex: 'hollow', sets: 4, duration: 20, durationLabel: '20-30 s', level: 0 },
       { ex: 'crunch-sac', sets: 3, reps: '12-15', tempo: '2-1-1', level: 1 },
+      { ex: 'dead-bug', sets: 3, reps: '8-10 / côté' },
+    ] },
+  ],
+}
+
+/** Jambes 2 : sauts doux pour l'explosivité, puis l'arrière des jambes et les fessiers. */
+const D: Session = {
+  id: 'D',
+  name: 'Séance D',
+  subtitle: 'Jambes · Arrière + sauts + abdos',
+  kind: 'muscu',
+  warmup: 'genoux',
+  cooldown: true,
+  duration: '~50 min',
+  expressDuration: '~35 min',
+  blocks: [
+    { id: 'S', rest: 90, express: true, items: [
+      { ex: 'squat-jump', sets: 2, reps: '5', note: 'Réception silencieuse, arrêt complet entre les sauts' },
+      { ex: 'pogo', sets: 2, duration: 20, durationLabel: '20 s' },
+    ] },
+    { id: 'A', rest: 120, express: true, restPause: true, items: [
+      { ex: 'rdl', sets: 4, reps: '12-15', tempo: '3-0-1', level: 2 },
+      { ex: 'hip-thrust', sets: 4, reps: '10-15', tempo: '2-1-1', level: 1, note: '2 s serré en haut' },
+    ] },
+    { id: 'B', rest: 75, items: [
+      { ex: 'leg-curl', sets: 3, reps: '10-15', tempo: '2-1-1', level: 0 },
+      { ex: 'ham-bridge', sets: 3, reps: '10-12', tempo: '2-1-1' },
+      { ex: 'calf', sets: 3, reps: '12-15 / jambe', tempo: '2-1-1', level: 1 },
+    ] },
+    { id: 'E', rest: 45, express: true, items: [
+      { ex: 'leg-raise', sets: 3, reps: '10-15', tempo: '2-0-1', level: 1 },
+      { ex: 'plank', sets: 3, duration: 30, durationLabel: '30-60 s', level: 0 },
+    ] },
+  ],
+}
+
+/** Haut du corps complet : 2e passage de la semaine sur chaque muscle du haut, sous d'autres angles. */
+const E: Session = {
+  id: 'E',
+  name: 'Séance E',
+  subtitle: 'Haut du corps complet',
+  kind: 'muscu',
+  warmup: 'general',
+  cooldown: true,
+  duration: '~55 min',
+  expressDuration: '~30 min',
+  blocks: [
+    { id: 'A', rest: 120, express: true, restPause: true, items: [
+      { ex: 'pushup', sets: 4, reps: '6-10', tempo: '2-1-1', level: 0, note: 'Version plus lourde qu’en A si tu peux' },
+      { ex: 'row-backpack', sets: 4, reps: '8-12 / bras', tempo: '2-1-1', level: 1 },
+    ] },
+    { id: 'B', rest: 90, express: true, items: [
+      { ex: 'pike', sets: 3, reps: '6-12', tempo: '2-0-1', level: 0 },
+      { ex: 'pulldown-kneel', sets: 3, reps: '10-15', tempo: '2-0-1', level: 1 },
+    ] },
+    { id: 'C', rest: 75, items: [
+      { ex: 'lat-raise-sac', sets: 3, reps: '12-15 / bras', tempo: '2-1-1' },
+      { ex: 'prone-t', sets: 3, reps: '12-15', tempo: '2-1-1' },
+      { ex: 'fly-band', sets: 3, reps: '12-15 / bras', tempo: '2-1-1', level: 0 },
+    ] },
+    { id: 'D', rest: 60, items: [
+      { ex: 'curl', sets: 3, reps: '10-15', tempo: '3-0-1', level: 1 },
+      { ex: 'pushup-diamond', sets: 3, reps: '8-15', tempo: '2-0-1', level: 1 },
     ] },
   ],
 }
@@ -102,7 +162,7 @@ const C: Session = {
 const GENOUX: Session = {
   id: 'GENOUX',
   name: 'Routine genoux',
-  subtitle: 'Avant la séance jambes et avant chaque basket',
+  subtitle: 'Avant les séances jambes et avant chaque course',
   kind: 'routine',
   warmup: 'none',
   cooldown: false,
@@ -120,7 +180,7 @@ const GENOUX: Session = {
 const WARMUP: Session = {
   id: 'WARMUP',
   name: 'Échauffement',
-  subtitle: 'Avant les séances A et B',
+  subtitle: 'Avant les séances du haut du corps',
   kind: 'routine',
   warmup: 'none',
   cooldown: false,
@@ -154,7 +214,7 @@ const COOLDOWN: Session = {
 
 const BONUS: Session = {
   id: 'BONUS',
-  name: 'Bonus avant basket',
+  name: 'Bonus avant basket (ancien)',
   subtitle: 'Routine genoux + pump bras léger (RIR 3-4)',
   kind: 'routine',
   warmup: 'genoux',
@@ -192,5 +252,9 @@ const MATIN: Session = {
   ],
 }
 
-export const SESSIONS: Record<SessionId, Session> = { A, B, C, GENOUX, BONUS, WARMUP, COOLDOWN, MATIN }
-export const MAIN_SESSIONS: SessionId[] = ['A', 'B', 'C']
+export const SESSIONS: Record<SessionId, Session> = { A, B, C, D, E, GENOUX, BONUS, WARMUP, COOLDOWN, MATIN }
+export const MAIN_SESSIONS: SessionId[] = ['A', 'B', 'C', 'D', 'E']
+/** Séance avec des sauts (remplacés si le genou gêne). */
+export const JUMPS_IN = (sid: SessionId) => SESSIONS[sid].blocks.some((b) => b.items.some((it) => it.ex === 'squat-jump' || it.ex === 'pogo'))
+/** Séances jambes : jamais deux jours de suite. */
+export const LEG_SESSIONS: SessionId[] = ['C', 'D']

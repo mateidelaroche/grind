@@ -88,7 +88,7 @@ export default function Settings({ onLoops }: { onLoops: () => void }) {
 
       <div className="section-title">Rappels</div>
       <div className="card" style={{ padding: '4px 16px', gap: 0 }}>
-        <SettingRow title="Notifications" desc="18h30 séance, course ou basket · 14h le week-end · lundi 7h30 pesée">
+        <SettingRow title="Notifications" desc="18h30 séance ou course · 14h le week-end · lundi 7h30 pesée">
           <Toggle on={s.settings.reminders} onChange={async (v) => {
             if (v) { const err = await enableReminders(); if (err) toast(err); else toast('Rappels activés 🔔') }
             else void disableReminders()

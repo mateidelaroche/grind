@@ -1,7 +1,7 @@
 // Fiche d'un jour du calendrier : ce qui était prévu, ce qui a été fait, et le rattrapage d'un oubli.
 import { useMemo, useState } from 'react'
 import { EXERCISES } from '../data/exercises'
-import { SESSIONS } from '../data/sessions'
+import { MAIN_SESSIONS, SESSIONS } from '../data/sessions'
 import { runProgress, RUN_PLAN } from '../data/running'
 import { GearLine, Sheet, Stepper, toast } from '../components/ui'
 import { buildSteps, dayPlan, formatDate, fromISO, isRunDay, lastReps, levelOf, runStartOf, sessionGear, today, weekNumber } from '../lib/program'
@@ -9,7 +9,7 @@ import { fmtKm, fmtDur } from '../lib/gps'
 import { useStore } from '../store'
 import type { SessionId, SetRecord } from '../types'
 
-const MUSCU: SessionId[] = ['A', 'B', 'C']
+const MUSCU: SessionId[] = MAIN_SESSIONS
 
 interface Line { recKey: string; ex: string; level: number; total: number; timed: boolean; done: number; value: number }
 

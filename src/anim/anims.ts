@@ -187,6 +187,17 @@ const pullApart: AnimDef = {
   dur: [1.0, 1.3], hold: [0.3, 0.6],
 }
 
+// Élévation latérale au sac : un bras à la fois, l'autre main sur la hanche.
+const latRaiseSac: AnimDef = {
+  ecc: 1,
+  view: 'front',
+  keys: [
+    stand(100, { aN: { a: [84, 88] }, aF: { a: [140, 40] }, lN: { ik: [104, FL] }, lF: { ik: [96, FL] } }),
+    stand(100, { aN: { a: [-2, 6] }, aF: { a: [140, 40] }, lN: { ik: [104, FL] }, lF: { ik: [96, FL] } }),
+  ],
+  dur: [1.1, 1.4], hold: [0.3, 0.5],
+}
+
 const curl: AnimDef = {
   ecc: 1,
   bands: [
@@ -304,6 +315,13 @@ function plankPose(lift: number): Pose {
 const plank: AnimDef = { keys: [plankPose(0), plankPose(1.5)], dur: [1.8, 1.8], hold: [0.2, 0.2] }
 
 const backLying = (o: Partial<Pose>): Pose => ({ p: [112, 145], t: 180, h: 182, aN: { a: [0, 0] }, aF: { a: [1, 1] }, lN: { a: [0, 0] }, lF: { a: [1, 1] }, ...o })
+// Élévations en T allongé sur le ventre : les bras (vus de profil, vers toi) décollent du sol.
+const proneTPose = (up: boolean): Pose => backLying({
+  h: 178, aN: { a: up ? [-35, -35] : [80, 80], s: 0.35 }, aF: { a: up ? [-30, -30] : [84, 84], s: 0.35 },
+  lN: { a: [0, 0] }, lF: { a: [1, 1] }, fN: 70, fF: 70,
+})
+const proneT: AnimDef = { ecc: 1, keys: [proneTPose(false), proneTPose(true)], dur: [1.0, 1.3], hold: [0.3, 1.0] }
+
 const legRaise: AnimDef = {
   ecc: 1,
   keys: [
@@ -395,6 +413,10 @@ const inchworm: AnimDef = {
 const glutePose = (up: boolean): Pose =>
   backLying({ p: up ? [100, 121] : [104, 145], t: up ? 150 : 180, h: up ? 172 : 182, aN: { a: [2, 0] }, aF: { a: [3, 1] }, lN: { ik: [136, FL] }, lF: { ik: [133, FL] } })
 const gluteBridge: AnimDef = { keys: [glutePose(false), glutePose(true)], dur: [0.9, 1.2], hold: [0.3, 0.8] }
+// Pont ischios : talons posés loin des fesses, genoux presque tendus, les hanches montent moins haut.
+const hamPose = (up: boolean): Pose =>
+  backLying({ p: up ? [100, 128] : [102, 145], t: up ? 164 : 180, h: up ? 176 : 182, aN: { a: [2, 0] }, aF: { a: [3, 1] }, lN: { ik: [170, FL] }, lF: { ik: [167, FL] } })
+const hamBridge: AnimDef = { keys: [hamPose(false), hamPose(true)], dur: [0.9, 1.2], hold: [0.3, 0.8] }
 
 const clamshellPose = (open: boolean): Pose => ({
   p: [112, 136], t: 180, h: 190,
@@ -468,6 +490,26 @@ const bwSquat: AnimDef = {
     stand(98, { p: [74, 112], t: -56, aN: { a: [2, 2] }, aF: { a: [4, 4] }, lN: { ik: [101, FL] }, lF: { ik: [97, FL] } }),
   ],
   dur: [1.8, 1.0], hold: [0.3, 0.3],
+}
+
+// Squat sauté : quart de squat bras en arrière, envol bras en haut, réception amortie.
+const squatJump: AnimDef = {
+  keys: [
+    stand(98, { aN: { a: [92, 92] }, aF: { a: [94, 94] } }),
+    stand(98, { p: [88, 94], t: -62, aN: { a: [125, 110] }, aF: { a: [128, 112] }, lN: { ik: [101, FL] }, lF: { ik: [97, FL] } }),
+    stand(98, { p: [98, 60], t: -88, aN: { a: [-70, -80] }, aF: { a: [-66, -76] }, lN: { ik: [101, FL - 14] }, lF: { ik: [97, FL - 14] }, fN: 45, fF: 45 }),
+    stand(98, { p: [88, 94], t: -62, aN: { a: [20, 20] }, aF: { a: [24, 24] }, lN: { ik: [101, FL] }, lF: { ik: [97, FL] } }),
+  ],
+  dur: [0.5, 0.25, 0.3, 0.8], hold: [0.6, 0.05, 0.05, 1.2],
+}
+
+// Pogo : jambes presque tendues, rebonds sur l'avant des pieds.
+const pogo: AnimDef = {
+  keys: [
+    stand(100, { p: [100, FL - 76], aN: { a: [80, 80] }, aF: { a: [84, 84] }, lN: { ik: [103, FL - 2] }, lF: { ik: [97, FL - 2] }, fN: 50, fF: 50 }),
+    stand(100, { p: [100, FL - 82], aN: { a: [76, 76] }, aF: { a: [80, 80] }, lN: { ik: [103, FL - 8] }, lF: { ik: [97, FL - 8] }, fN: 60, fF: 60 }),
+  ],
+  dur: [0.18, 0.18], hold: [0.02, 0.02],
 }
 
 // ───────────── ÉTIREMENTS ─────────────
@@ -591,13 +633,13 @@ export const ANIMS: Record<string, AnimDef> = {
   pushup, 'pushup-decline': pushupDecline, 'pushup-diamond': pushupDiamond, pike, 'dips-bed': dipsBed,
   'fly-band': flyBand, 'lat-raise': latRaise, 'triceps-oh': tricepsOh,
   'row-seated': rowSeated, 'row-backpack': rowBackpack, 'pulldown-kneel': pulldownKneel, pullover,
-  'face-pull': facePull, 'pull-apart': pullApart, curl, hammer: curl,
+  'face-pull': facePull, 'pull-apart': pullApart, 'lat-raise-sac': latRaiseSac, 'prone-t': proneT, curl, hammer: curl,
   lunge, 'lunge-bulgare': lungeBulgare, 'box-squat': boxSquat, calf, 'hip-thrust': hipThrust,
   'leg-curl': legCurl, rdl,
   'leg-curl-uni': legCurlUni, 'row-seated-uni': rowSeatedUni, 'pulldown-uni': pulldownUni, 'hip-thrust-uni': hipThrustUni, 'rdl-uni': rdlUni,
   'crunch-band': crunchBand, plank, 'leg-raise': legRaise, 'side-plank': sidePlank, 'dead-bug': deadBug, hollow, 'crunch-sac': crunchFloor, bicycle,
   march, 'arm-circles': armCircles, 'cat-cow': catCow, 'scap-pushup': scapPushup, inchworm,
-  'glute-bridge': gluteBridge, clamshell, tke, 'tib-raise': tibRaise, 'wall-sit': wallSit, 'bw-squat': bwSquat,
+  'glute-bridge': gluteBridge, 'ham-bridge': hamBridge, clamshell, tke, 'tib-raise': tibRaise, 'wall-sit': wallSit, 'bw-squat': bwSquat, 'squat-jump': squatJump, pogo,
   'shadow-box': shadowBox, 'step-jack': stepJack, climber,
   'st-pecs': stPecs, 'st-child': stChild, 'st-quad': stQuad, 'st-hams': stHams, 'st-hip': stHip,
   'st-knees': stKnees, 'st-fig4': stFig4, 'st-squat': stSquat, 'st-calf': stCalf, 'st-fold': stFold, 'st-side': stSide, 'st-cross': stCross,
@@ -619,6 +661,7 @@ const LEVEL_GEAR: Record<string, { sac?: Target; bands?: BandDef[] }> = {
   'pushup-decline': { sac: { j: 'chest', b: [0, 13] } },
   'dips-bed': { sac: { j: 'kneeN', o: [-12, -6] } },
   hammer: { sac: { j: 'handN', o: [0, 9] } },
+  'lat-raise-sac': { sac: { j: 'handN', o: [0, 9] } },
   rdl: { sac: { j: 'handN', o: [0, 9] } },
   lunge: { sac: { j: 'chest', b: [-2, 12] } },
   calf: { sac: { j: 'chest', b: [-2, 12] } },

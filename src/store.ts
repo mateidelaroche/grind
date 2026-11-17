@@ -2,7 +2,7 @@ import { markDeleted, type Deleted } from './lib/merge'
 import { create } from 'zustand'
 import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware'
 import { del, get, set } from 'idb-keyval'
-import { addDays, DEFAULT_START, OLD_START, programLevel, today, weekNumber } from './lib/program'
+import { addDays, DEFAULT_START, noJumpsReason, OLD_START, programLevel, recentKnee, today, weekNumber } from './lib/program'
 import { autoSwaps, type SwapChoice } from './lib/variants'
 import type {
   BasketLog, FoodLog, ItemEdit, LevelEvent, Measures, RunLog, RunSplit, RunStep, SessionId, SetRecord, Settings, Swap, TestId, TestResult, Unavailable, Workout,
@@ -265,7 +265,8 @@ export const useStore = create<State>()(
           const w: Workout = { id, date, session, express, startedAt: Date.now(), sets: {}, completed: false }
           upd((s) => {
             const opts = { week: weekNumber(today(), s.startDate), express, levels: s.levels, edits: s.edits, timeTargets: s.timeTargets }
-            const { swaps, used } = autoSwaps(session, opts, { levels: s.levels, unavailable: s.unavailable ?? [] }, s.planned ?? {})
+            const noJumps = !!noJumpsReason(opts.week, recentKnee(s.runs, s.basket, date))
+            const { swaps, used } = autoSwaps(session, opts, { levels: s.levels, unavailable: s.unavailable ?? [], noJumps }, s.planned ?? {})
             return { workouts: [...s.workouts, w], active: { workoutId: id, session, express, stepIndex: 0, done: {}, swaps, plannedUsed: used } }
           })
         },

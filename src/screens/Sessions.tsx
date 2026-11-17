@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import Figure from '../anim/Figure'
 import { EXERCISES } from '../data/exercises'
-import { SESSIONS } from '../data/sessions'
+import { MAIN_SESSIONS, SESSIONS } from '../data/sessions'
 import { IconBack, IconEdit } from '../components/icons'
 import { Sheet, Stepper, toast } from '../components/ui'
 import { animOf, editKey, effectiveItem, effectiveLevel, effectiveRest, effectiveSets, levelOf, today, weekNumber } from '../lib/program'
@@ -10,8 +10,8 @@ import type { SessionId } from '../types'
 import { workOfSession } from '../data/muscles'
 import MuscleMap from '../components/MuscleMap'
 
-const MAIN: SessionId[] = ['A', 'B', 'C']
-const ROUTINES: SessionId[] = ['MATIN', 'GENOUX', 'BONUS', 'WARMUP', 'COOLDOWN']
+const MAIN: SessionId[] = MAIN_SESSIONS
+const ROUTINES: SessionId[] = ['MATIN', 'GENOUX', 'WARMUP', 'COOLDOWN']
 
 export function SessionsList({ onOpen, onStart, onRunProgram }: { onOpen: (s: SessionId) => void; onStart: (s: SessionId, express: boolean) => void; onRunProgram: () => void }) {
   return (

@@ -3,9 +3,9 @@ import { describe, expect, it } from 'vitest'
 import { ANIMS } from './anim/anims'
 import { applyTempo, poseAt, skeleton, cycleLength } from './anim/rig'
 import { EXERCISES } from './data/exercises'
-import { SESSIONS } from './data/sessions'
+import { MAIN_SESSIONS, SESSIONS } from './data/sessions'
 import { VIDEOS } from './data/videos'
-import { effectiveSets, buildSteps, dayPlan, lastReps, repRange, suggestions, weightTrend } from './lib/program'
+import { effectiveSets, buildSteps, dayPlan, lastReps, legWarning, noJumpsReason, recentKnee, repRange, suggestions, weightTrend } from './lib/program'
 import { VARIANTS } from './data/variants'
 import { plannedSec, runMinutes, runProgress, staleClose, staleRun } from './data/running'
 import { markDeleted, mergeData, restoredDeleted } from './lib/merge'
@@ -163,18 +163,53 @@ describe('corrections de la revue', () => {
 })
 
 describe('volume des séances', () => {
-  it('toutes les séries dès la semaine 1, moitié en semaine 9', () => {
+  it('toutes les séries dès la semaine 1, moitié en semaine 7', () => {
     expect(effectiveSets(4, 1, false)).toBe(4)
     expect(effectiveSets(4, 2, false)).toBe(4)
-    expect(effectiveSets(4, 9, false)).toBe(2)
+    expect(effectiveSets(4, 7, false)).toBe(2)
+    expect(effectiveSets(4, 9, false)).toBe(4)
   })
   it('chaque séance a sa durée express et un exercice d’abdos dynamique en express', () => {
     const dynamic = ['crunch-band', 'leg-raise', 'bicycle', 'crunch-sac']
-    for (const id of ['A', 'B', 'C'] as const) {
+    for (const id of ['A', 'B', 'C', 'D'] as const) {
       expect(SESSIONS[id].expressDuration, id).toBeDefined()
       const exs = SESSIONS[id].blocks.filter((b) => b.express).flatMap((b) => b.items.map((i) => i.ex))
       expect(exs.some((e) => dynamic.includes(e)), id).toBe(true)
     }
+  })
+})
+
+describe('semaine sans basket', () => {
+  const ov = {}
+  it('nouvelle semaine à partir du 23/11 : C A B D repos E repos', () => {
+    const week = Array.from({ length: 7 }, (_, i) => dayPlan(`2026-11-${23 + i}`, ov))
+    expect(week.map((p) => (p.type === 'session' ? p.session : p.type))).toEqual(['C', 'A', 'B', 'D', 'rest', 'E', 'rest'])
+  })
+  it('semaine de transition du 16/11 : lundi repos, C mardi', () => {
+    const week = Array.from({ length: 7 }, (_, i) => dayPlan(`2026-11-${16 + i}`, ov))
+    expect(week.map((p) => (p.type === 'session' ? p.session : p.type))).toEqual(['rest', 'C', 'B', 'A', 'D', 'rest', 'E'])
+  })
+  it('les anciennes semaines gardent le basket', () => {
+    expect(dayPlan('2026-11-09', ov).type).toBe('basket')
+    expect(dayPlan('2026-11-13', ov).type).toBe('rest')
+  })
+  it('jamais deux séances jambes de suite sans avertissement', () => {
+    expect(legWarning('C', '2026-11-25', ov)).toBe(true) // mercredi : D le lendemain
+    expect(legWarning('C', '2026-11-28', ov)).toBe(false) // samedi : vendredi repos, dimanche repos
+    expect(legWarning('D', '2026-11-24', ov, '2026-11-26')).toBe(true) // mardi : C lundi
+    expect(legWarning('A', '2026-11-24', ov)).toBe(false)
+  })
+  it('pas de sauts si le genou gêne ou en semaine allégée', () => {
+    const run = { id: 'r', date: '2026-11-25', plan: 0, startedAt: 0, endedAt: 0, dur: 1, dist: 1, completed: true, splits: [], knee: 3 }
+    expect(recentKnee([run], {}, '2026-11-26')).toBe(3)
+    expect(recentKnee([run], {}, '2026-11-29')).toBe(0)
+    expect(noJumpsReason(4, 3)).toBeDefined()
+    expect(noJumpsReason(4, 2)).toBeUndefined()
+    expect(noJumpsReason(7, 0)).toBeDefined()
+    const opts = { week: 4, express: false, levels: {}, edits: {}, timeTargets: {} }
+    const { swaps } = autoSwaps('D', opts, { levels: {}, unavailable: [], noJumps: true }, {})
+    expect(Object.values(swaps).map((l) => l[0].ex).sort()).toEqual(['bw-squat', 'calf-floor'])
+    expect(autoSwaps('D', opts, { levels: {}, unavailable: [] }, {}).swaps).toEqual({})
   })
 })
 
@@ -195,8 +230,8 @@ describe('variantes', () => {
       }
     }
   })
-  it('chaque exercice des séances A, B et C a une variante', () => {
-    for (const id of ['A', 'B', 'C'] as const) for (const b of SESSIONS[id].blocks) for (const it of b.items) expect(VARIANTS[it.ex], it.ex).toBeDefined()
+  it('chaque exercice des séances principales a une variante', () => {
+    for (const id of MAIN_SESSIONS) for (const b of SESSIONS[id].blocks) for (const it of b.items) expect(VARIANTS[it.ex], it.ex).toBeDefined()
   })
   it('une variante n’utilise jamais le matériel en cause', () => {
     for (const ex of Object.keys(VARIANTS).filter((e) => item(e))) {

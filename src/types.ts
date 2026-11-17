@@ -82,7 +82,7 @@ export interface Block {
   restPause?: boolean
 }
 
-export type SessionId = 'A' | 'B' | 'C' | 'GENOUX' | 'BONUS' | 'WARMUP' | 'COOLDOWN' | 'MATIN'
+export type SessionId = 'A' | 'B' | 'C' | 'D' | 'E' | 'GENOUX' | 'BONUS' | 'WARMUP' | 'COOLDOWN' | 'MATIN'
 
 export interface Session {
   id: SessionId
