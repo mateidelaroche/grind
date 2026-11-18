@@ -7,7 +7,7 @@ import { MAIN_SESSIONS, SESSIONS } from './data/sessions'
 import { VIDEOS } from './data/videos'
 import { effectiveSets, buildSteps, dayPlan, lastReps, legWarning, noJumpsReason, recentKnee, repRange, suggestions, weightTrend } from './lib/program'
 import { VARIANTS } from './data/variants'
-import { plannedSec, runMinutes, runProgress, staleClose, staleRun } from './data/running'
+import { plannedSec, RUN_GOAL, RUN_PLAN, runMinutes, runProgress, runSteps, staleClose, staleRun, stepLabel, withoutAccel } from './data/running'
 import { markDeleted, mergeData, restoredDeleted } from './lib/merge'
 import type { SyncedData } from './store'
 import { autoSwaps, clashes, optionsFor, problemsFor, shiftReps } from './lib/variants'
@@ -317,5 +317,28 @@ describe('tempo et poids', () => {
     expect(t.perWeek).toBeCloseTo(0.34, 1)
     expect(t.verdict).toBe('ok')
     expect(weightTrend({ '2026-10-26': 77, '2026-11-02': 77 }, '2026-11-02')).toBeUndefined()
+  })
+})
+
+describe('programme course avec allures', () => {
+  it('20 sorties, mercredi varié, dimanche lent, 5 km puis 8 km', () => {
+    expect(RUN_PLAN).toHaveLength(20)
+    expect(RUN_PLAN[0].main.map((x) => x.pace)).toContain('rapide')
+    expect(RUN_PLAN[1].main.every((x) => x.pace === 'lent')).toBe(true)
+    expect(RUN_PLAN[7].main[0].dist).toBe(RUN_GOAL)
+    expect(RUN_PLAN[19].main[0].dist).toBe(8000)
+    for (const r of RUN_PLAN) for (const st of r.main) expect(st.pace).toBeTruthy()
+    expect(stepLabel(RUN_PLAN[0].main[1])).toBe('Rapide')
+  })
+  it('sans accélérations : elles et leur récup disparaissent, le reste ne bouge pas', () => {
+    const steps = runSteps(RUN_PLAN[2])
+    const out = withoutAccel(steps)
+    expect(out.some((x) => x.pace === 'accel')).toBe(false)
+    expect(steps.length - out.length).toBe(8)
+    expect(out.filter((x) => x.pace === 'rapide')).toHaveLength(steps.filter((x) => x.pace === 'rapide').length)
+    expect(withoutAccel(runSteps(RUN_PLAN[0]))).toEqual(runSteps(RUN_PLAN[0]))
+  })
+  it('seule la sortie 5 km donne un chrono 5 km', () => {
+    expect(RUN_PLAN.filter((r) => r.main.some((x) => x.dist === RUN_GOAL)).map((r) => r.week)).toEqual([4])
   })
 })

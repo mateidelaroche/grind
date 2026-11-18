@@ -128,7 +128,7 @@ export function RunProgram({ onBack, onRun }: { onBack: () => void; onRun: (k: R
         <button className="icon-btn" onClick={onBack} aria-label="Retour"><IconBack /></button>
         <div className="grow">
           <div className="ex-name">🏃 Programme course</div>
-          <div className="small muted">{RUN_WEEKS} semaines · mercredi + dimanche · objectif 5 km</div>
+          <div className="small muted">{RUN_WEEKS} semaines · mercredi allures variées · dimanche sortie longue · 5 km puis 8 km</div>
         </div>
       </div>
 
@@ -149,7 +149,10 @@ export function RunProgram({ onBack, onRun }: { onBack: () => void; onRun: (k: R
 
       <div className="card small" style={{ gap: 6 }}>
         <b>Les règles</b>
-        <span>🗣️ <b>Allure conversation</b> : tu dois pouvoir parler en courant. Trop essoufflé = trop vite.</span>
+        <span>🐢 <b>Lent</b> : tu peux parler en phrases entières. C’est l’allure du dimanche et de la majorité des minutes.</span>
+        <span>🏃 <b>Moyen</b> : phrases courtes, souffle marqué mais contrôlé.</span>
+        <span>🔥 <b>Rapide</b> : quelques mots seulement, environ 85 %. <b>Accélération</b> : 20 s qui montent jusqu’à presque sprint, relâché, sur du plat.</span>
+        <span>🦵 Genou noté au-dessus de 2/10 ces 2 derniers jours, ou semaine allégée : les accélérations sont retirées.</span>
         <span>👣 <b>Petites foulées</b>, le pied se pose sous toi, pas loin devant : c’est ce qui épargne les genoux.</span>
         <span>🦵 Après chaque sortie et le lendemain matin, tu notes ton genou. ≥ {KNEE_REPEAT}/10 : on refait la semaine. ≥ {KNEE_BACK}/10 : on recule d’une semaine.</span>
         <span>📅 Une sortie ratée ne fait rien perdre : le programme avance sortie par sortie, pas à la date.</span>
@@ -159,8 +162,8 @@ export function RunProgram({ onBack, onRun }: { onBack: () => void; onRun: (k: R
       {Array.from({ length: RUN_WEEKS }, (_, w) => (
         <div key={w} className="card" style={{ padding: '10px 16px', gap: 0 }}>
           <div className="row between">
-            <b className="small">Semaine {w + 1}{w >= 7 ? ' · jusqu’à 40 min' : ''}</b>
-            <span className="tiny muted">{Math.round(runTime(RUN_PLAN[w * 2]))}′ de course</span>
+            <b className="small">Semaine {w + 1}{w === 4 ? ' · allégée' : ''}</b>
+            <span className="tiny muted">{Math.round(runTime(RUN_PLAN[w * 2]) + runTime(RUN_PLAN[w * 2 + 1]))}′ de course</span>
           </div>
           {[0, 1].map((n) => {
             const i = w * 2 + n

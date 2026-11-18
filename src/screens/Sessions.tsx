@@ -19,7 +19,7 @@ export function SessionsList({ onOpen, onStart, onRunProgram }: { onOpen: (s: Se
       <div className="page-title">Séances</div>
       <button className="card tap" onClick={onRunProgram}>
         <div className="row between"><div className="ex-name">🏃 Course</div><span className="small muted">30-40 min</span></div>
-        <div className="muted small">10 semaines, mercredi + dimanche : du fractionné course/marche jusqu’aux 5 km sans t’arrêter.</div>
+        <div className="muted small">10 semaines, mercredi + dimanche : allures variées le mercredi, sortie longue et lente le dimanche : 5 km en semaine 4, 8 km en semaine 10.</div>
       </button>
       {MAIN.map((id) => {
         const s = SESSIONS[id]

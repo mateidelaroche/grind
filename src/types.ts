@@ -190,7 +190,11 @@ export interface RunStep {
   dist?: number
   /** Exercice affiché (cardio en chambre). */
   ex?: string
+  /** Allure demandée (fractions de course) ou récupération. */
+  pace?: RunPace
 }
+
+export type RunPace = 'lent' | 'moyen' | 'rapide' | 'accel' | 'recup'
 
 export interface RunSplit {
   kind: RunStepKind

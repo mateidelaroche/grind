@@ -1,7 +1,7 @@
 import { EXERCISES } from '../data/exercises'
 import { SESSIONS } from '../data/sessions'
 import { addDays, mondayOf } from './program'
-import { RUN_PLAN } from '../data/running'
+import { RUN_GOAL, RUN_PLAN } from '../data/running'
 import { fmtDur, fmtKm, fmtPace } from './gps'
 import type { LevelEvent, RunLog, TestId, TestKey, TestResult, Workout } from '../types'
 
@@ -128,7 +128,7 @@ export function runBests(runs: RunLog[]): RunBests {
       if (sp.dur >= 180 && sp.dist >= 400) better('pace', sp.dur / (sp.dist / 1000), r.date, true)
     }
     // Étape « jusqu'à 5 km » menée au bout : c'est le chrono du 5 km.
-    const goal = r.plan >= 0 && RUN_PLAN[r.plan]?.main.some((st) => st.dist)
+    const goal = r.plan >= 0 && RUN_PLAN[r.plan]?.main.some((st) => st.dist === RUN_GOAL)
     const sp = goal ? r.splits.find((x) => x.kind === 'run' && x.full) : undefined
     if (sp) better('fiveK', sp.dur, r.date, true)
   }

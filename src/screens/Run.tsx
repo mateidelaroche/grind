@@ -1,7 +1,8 @@
 import { useEffect, useReducer, useRef, useState } from 'react'
 import Figure from '../anim/Figure'
 import { EXERCISES } from '../data/exercises'
-import { FREE_STEPS, INDOOR_STEPS, plannedSec, RUN_PLAN, runMinutes, runSteps, staleClose, staleRun, STEP_LABEL, stepSec } from '../data/running'
+import { FREE_STEPS, INDOOR_STEPS, PACES, plannedSec, RUN_PLAN, runMinutes, runSteps, staleClose, staleRun, stepLabel, stepSec, withoutAccel } from '../data/running'
+import { noJumpsReason, recentKnee, today, weekNumber } from '../lib/program'
 import { IconBack } from '../components/icons'
 import { fmtTime, Sheet } from '../components/ui'
 import { beep, keepAwake, say, unlockAudio } from '../lib/audio'
@@ -11,23 +12,31 @@ import type { RunSplit, RunStep } from '../types'
 
 export type RunKind = { plan: number } | { indoor: true } | { free: true }
 
-export function stepsOf(k: RunKind): { steps: RunStep[]; plan: number; indoor: boolean; title: string } {
+export function stepsOf(k: RunKind): { steps: RunStep[]; plan: number; indoor: boolean; title: string; noAccel?: string } {
   if ('indoor' in k) return { steps: INDOOR_STEPS, plan: -1, indoor: true, title: 'Cardio en chambre' }
   if ('free' in k) return { steps: FREE_STEPS, plan: -1, indoor: false, title: 'Sortie libre' }
   const r = RUN_PLAN[k.plan]
-  return { steps: runSteps(r), plan: k.plan, indoor: false, title: `Sortie ${k.plan + 1}/${RUN_PLAN.length} · semaine ${r.week}` }
+  const noAccel = accelOff()
+  const steps = noAccel ? withoutAccel(runSteps(r)) : runSteps(r)
+  return { steps, plan: k.plan, indoor: false, title: `Sortie ${k.plan + 1}/${RUN_PLAN.length} · semaine ${r.week}`, noAccel: noAccel && steps.length < runSteps(r).length ? noAccel : undefined }
+}
+
+/** Genou > 2/10 ces 2 derniers jours ou semaine allégée : pas d'accélérations. */
+function accelOff() {
+  const s = useStore.getState()
+  return noJumpsReason(weekNumber(today(), s.startDate), recentKnee(s.runs, s.basket, today()))?.replace('pas de sauts', 'pas d’accélérations')
 }
 
 const isEffort = (k: RunStep['kind']) => k === 'run' || k === 'work'
 const elapsed = (r: ActiveRun, now = Date.now()) => ((r.pausedAt ?? now) - r.startedAt - r.pausedMs) / 1000
 
 export const stepText = (s: RunStep) =>
-  s.dist ? `${STEP_LABEL[s.kind]} ${fmtKm(s.dist)} km` : s.dur ? `${STEP_LABEL[s.kind]} ${fmtMin(s.dur)}` : STEP_LABEL[s.kind]
+  s.dist ? `${stepLabel(s)} ${fmtKm(s.dist)} km` : s.dur ? (s.pace ? `${fmtMin(s.dur)} ${PACES[s.pace].short}` : `${stepLabel(s)} ${fmtMin(s.dur)}`) : stepLabel(s)
 
 // ───────────── Avant de partir ─────────────
 export function RunPrep({ kind, onBack }: { kind: RunKind; onBack: () => void }) {
   const startRun = useStore((s) => s.startRun)
-  const { steps, plan, indoor, title } = stepsOf(kind)
+  const [{ steps, plan, indoor, title, noAccel }] = useState(() => stepsOf(kind))
   const session = plan >= 0 ? RUN_PLAN[plan] : undefined
   const [gps, setGps] = useState<{ acc?: number; error?: string }>({})
 
@@ -55,6 +64,7 @@ export function RunPrep({ kind, onBack }: { kind: RunKind; onBack: () => void })
       </div>
 
       {session?.tip && <div className="card accent small">💡 {session.tip}</div>}
+      {noAccel && <div className="card small" style={{ color: 'var(--warn)' }}>🦵 {noAccel} Elles sont retirées de cette sortie.</div>}
 
       {!('free' in kind) && (
         <div className="card" style={{ padding: '4px 16px', gap: 0 }}>
@@ -92,7 +102,13 @@ export function RunPrep({ kind, onBack }: { kind: RunKind; onBack: () => void })
       )}
 
       <button className="btn primary big block" onClick={go}>{indoor ? 'C’est parti' : gpsOk || gps.error ? 'C’est parti' : 'Partir sans attendre le GPS'}</button>
-      {!indoor && <div className="tiny muted center">Bips : 3 notes qui montent = cours · 2 notes qui descendent = marche · tic-tic-tic = changement dans 3 s</div>}
+      {!indoor && steps.some((x) => x.pace) && (
+        <div className="card small" style={{ gap: 4 }}>
+          <b>Les allures</b>
+          {[...new Set(steps.map((x) => x.pace).filter((p) => p))].map((p) => <span key={p}><b>{PACES[p!].label}</b> : {PACES[p!].hint.toLowerCase()}</span>)}
+        </div>
+      )}
+      {!indoor && <div className="tiny muted center">Bips : 3 notes qui montent = cours · 2 notes qui descendent = récup ou marche · tic-tic-tic = changement dans 3 s · l’allure est annoncée à chaque changement</div>}
     </div>
   )
 }
@@ -112,7 +128,16 @@ function compactSteps(steps: RunStep[]) {
     const exs = [...new Set(main.filter((s) => s.ex).map((s) => EXERCISES[s.ex!].name))]
     const n = efforts.length / exs.length
     out.push({ kind: 'work', text: `${n} tours : ${exs.join(', ')} · 40 s / 20 s` })
-  } else main.forEach((s) => out.push({ kind: s.kind, text: stepText(s) }))
+  } else {
+    const same = (x?: RunStep, y?: RunStep) => !!x && !!y && x.kind === y.kind && x.dur === y.dur && x.pace === y.pace
+    for (let i = 0; i < main.length;) {
+      const [e, r] = [main[i], main[i + 1]]
+      let n = 1
+      if (isEffort(e.kind) && r && !isEffort(r.kind)) while (same(main[i + 2 * n], e) && same(main[i + 2 * n + 1], r)) n++
+      if (n > 1) { out.push({ kind: e.kind, text: `${n} × ${stepText(e)} / ${stepText(r).toLowerCase()}` }); i += 2 * n }
+      else { out.push({ kind: e.kind, text: stepText(e) }); i++ }
+    }
+  }
   if (last.kind === 'cool') out.push({ kind: 'cool', text: `${stepText(last)} · marche tranquille` })
   return out
 }
@@ -192,7 +217,7 @@ export function RunScreen({ onFinished }: { onFinished: (id: string | undefined)
   const announce = (st: RunStep) => {
     if (isEffort(st.kind)) beep.run()
     else beep.walk()
-    say(st.ex ? EXERCISES[st.ex].name : STEP_LABEL[st.kind])
+    say(st.ex ? EXERCISES[st.ex].name : stepLabel(st))
   }
 
   const finish = (auto = false) => {
@@ -255,6 +280,8 @@ export function RunScreen({ onFinished }: { onFinished: (id: string | undefined)
   const total = plannedSec(a.steps)
   const efforts = a.steps.filter((s) => isEffort(s.kind)).length
   const effortN = a.steps.slice(0, a.step + 1).filter((s) => isEffort(s.kind)).length
+  const samePace = a.steps.filter((s) => isEffort(s.kind) && s.pace === st.pace)
+  const paceN = a.steps.slice(0, a.step + 1).filter((s) => isEffort(s.kind) && s.pace === st.pace).length
   const perRound = new Set(a.steps.filter((s) => s.kind === 'work').map((s) => s.ex)).size || 1
   const figEx = st.ex ?? (st.kind === 'rest' ? next?.ex : undefined)
   const gpsAge = tracker.status.lastFix ? (Date.now() - tracker.status.lastFix) / 1000 : Infinity
@@ -271,13 +298,14 @@ export function RunScreen({ onFinished }: { onFinished: (id: string | undefined)
       </div>
 
       <div className="run-phase">
-        <div className="run-label">{a.pausedAt ? 'Pause' : STEP_LABEL[st.kind]}</div>
+        <div className="run-label">{a.pausedAt ? 'Pause' : stepLabel(st)}</div>
+        {st.pace && !a.pausedAt && <div className="small">{PACES[st.pace].hint}</div>}
         {st.ex && <div className="ex-name">{EXERCISES[st.ex].name}</div>}
         <div className="run-big">
           {left === undefined ? fmtDur(inStep) : st.dist !== undefined ? <>{fmtKm(Math.max(0, left))}<small> km</small></> : fmtTime(left)}
         </div>
         <div className="small muted">
-          {st.dist !== undefined ? 'restants' : st.kind === 'free' ? 'Tu t’arrêtes quand tu veux' : a.indoor && st.kind === 'work' ? `Tour ${Math.ceil(effortN / perRound)}/${Math.round(efforts / perRound)}` : efforts > 1 && isEffort(st.kind) ? `Fraction ${effortN}/${efforts}` : ' '}
+          {st.dist !== undefined ? 'restants' : st.kind === 'free' ? 'Tu t’arrêtes quand tu veux' : a.indoor && st.kind === 'work' ? `Tour ${Math.ceil(effortN / perRound)}/${Math.round(efforts / perRound)}` : st.pace ? (st.pace !== 'lent' && isEffort(st.kind) && samePace.length > 1 ? `${PACES[st.pace].label} ${paceN}/${samePace.length}` : ' ') : efforts > 1 && isEffort(st.kind) ? `Fraction ${effortN}/${efforts}` : ' '}
         </div>
       </div>
 
