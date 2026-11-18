@@ -7,6 +7,7 @@ import { MAIN_SESSIONS, SESSIONS } from './data/sessions'
 import { VIDEOS } from './data/videos'
 import { effectiveSets, buildSteps, dayPlan, lastReps, legWarning, noJumpsReason, recentKnee, repRange, suggestions, weightTrend } from './lib/program'
 import { VARIANTS } from './data/variants'
+import { cumul, lentPace, locate, matchingRoutes, planMeters, plannedMeters, type LatLng, type SavedRoute } from './lib/routes'
 import { plannedSec, RUN_GOAL, RUN_PLAN, runMinutes, runProgress, runSteps, staleClose, staleRun, stepLabel, withoutAccel } from './data/running'
 import { markDeleted, mergeData, restoredDeleted } from './lib/merge'
 import type { SyncedData } from './store'
@@ -340,5 +341,31 @@ describe('programme course avec allures', () => {
   })
   it('seule la sortie 5 km donne un chrono 5 km', () => {
     expect(RUN_PLAN.filter((r) => r.main.some((x) => x.dist === RUN_GOAL)).map((r) => r.week)).toEqual([4])
+  })
+})
+
+describe('parcours', () => {
+  it('distance visée : allure lente par défaut puis la tienne', () => {
+    expect(planMeters(1, []) / 1000).toBeCloseTo(4.3, 0) // 25′ lent à 6′45 + 3′ + 3′ de marche
+    expect(planMeters(7, []) / 1000).toBeCloseTo(5.55, 1) // 5 km + marche
+    // Première sortie réelle : 4,34 km au total, marche comprise.
+    const first = { id: 'w', date: 'x', plan: 0, startedAt: 1, endedAt: 1, dur: 2040, dist: 4340, completed: true, splits: [], track: [[1, 1, 0], [2, 2, 1]] as [number, number, number][] }
+    const p = lentPace([first])
+    expect(Math.abs(plannedMeters(runSteps(RUN_PLAN[0]), p) - 4340)).toBeLessThan(5)
+    expect(planMeters(1, [first])).toBeLessThan(planMeters(1, []))
+    expect(lentPace([{ ...first, track: undefined }])).toBe(405)
+  })
+  it('favoris proches de la distance, du plus proche au plus loin', () => {
+    const r = (id: string, dist: number) => ({ id, name: id, coords: [], dist, source: 'run', createdAt: 0 }) as SavedRoute
+    expect(matchingRoutes([r('a', 5600), r('b', 4900), r('c', 3000)], 5000).map((x) => x.id)).toEqual(['b', 'a'])
+  })
+  it('position sur une boucle et écart au tracé', () => {
+    const c: LatLng[] = [[48.85, 2.35], [48.851, 2.35], [48.851, 2.352], [48.85, 2.352], [48.85, 2.35]]
+    const cum = cumul(c)
+    const on = locate(c, cum, [48.8505, 2.35], 0)
+    expect(on.d).toBeLessThan(2)
+    expect(on.along).toBeCloseTo(55.6, 0)
+    expect(locate(c, cum, [48.8505, 2.351], 0).d).toBeGreaterThan(45)
+    expect(locate(c, cum, [48.8505, 2.352], 0).seg).toBe(2)
   })
 })

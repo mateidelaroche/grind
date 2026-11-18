@@ -8,6 +8,8 @@ import { fmtTime, Sheet } from '../components/ui'
 import { beep, keepAwake, say, unlockAudio } from '../lib/audio'
 import { fmtDur, fmtKm, fmtMin, fmtPace, simplify, tracker, watchGps } from '../lib/gps'
 import { useStore, type ActiveRun } from '../store'
+import { lentPace, plannedMeters, type RunRoute } from '../lib/routes'
+import { RouteFollow, RoutePicker } from './RouteViews'
 import type { RunSplit, RunStep } from '../types'
 
 export type RunKind = { plan: number } | { indoor: true } | { free: true }
@@ -39,6 +41,8 @@ export function RunPrep({ kind, onBack }: { kind: RunKind; onBack: () => void })
   const [{ steps, plan, indoor, title, noAccel }] = useState(() => stepsOf(kind))
   const session = plan >= 0 ? RUN_PLAN[plan] : undefined
   const [gps, setGps] = useState<{ acc?: number; error?: string }>({})
+  const [route, setRoute] = useState<RunRoute>()
+  const [target] = useState(() => Math.round(plannedMeters(steps, lentPace(useStore.getState().runs))))
 
   useEffect(() => {
     if (indoor) return
@@ -49,7 +53,7 @@ export function RunPrep({ kind, onBack }: { kind: RunKind; onBack: () => void })
     unlockAudio()
     void keepAwake(true)
     beep.run()
-    startRun({ plan, indoor, steps })
+    startRun({ plan, indoor, steps, route: !indoor ? route : undefined })
   }
 
   const gpsOk = gps.acc !== undefined && gps.acc <= 25
@@ -84,6 +88,7 @@ export function RunPrep({ kind, onBack }: { kind: RunKind; onBack: () => void })
         </div>
       ) : (
         <>
+          {plan >= 0 && <RoutePicker target={target} value={route} onChange={setRoute} />}
           <div className="card small" style={{ gap: 6 }}>
             <b>Avant de partir</b>
             <span>👟 Chaussures de running, lacets serrés</span>
@@ -329,6 +334,8 @@ export function RunScreen({ onFinished }: { onFinished: (id: string | undefined)
           <div><b>{fmtPace(avg)}</b><span>moyenne /km</span></div>
         </div>
       )}
+
+      {a.route && !a.indoor && <RouteFollow route={a.route} paused={!!a.pausedAt} />}
 
       <div className="run-actions">
         <button className="btn big grow" onClick={togglePause}>{a.pausedAt ? '▶︎ Reprendre' : '⏸ Pause'}</button>

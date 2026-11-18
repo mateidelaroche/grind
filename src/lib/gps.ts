@@ -114,7 +114,7 @@ class Tracker {
 
 export const tracker = new Tracker()
 
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') void tracker.save() })
+if (typeof document !== 'undefined') document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') void tracker.save() })
 
 /** Simplification Douglas-Peucker (tolérance en m) puis compression en entiers. */
 export function simplify(points: Pt[], tol = 4): [number, number, number][] {

@@ -11,6 +11,7 @@ import { recordsOfRun, runBests, RUN_KM_MILESTONES } from '../lib/records'
 import { useStore } from '../store'
 import type { RunLog, SessionId } from '../types'
 import type { RunKind } from './Run'
+import { SaveRunRoute } from './RouteViews'
 
 const RunMap = lazy(() => import('./RunMap').catch(() => ({ default: () => <></> })))
 
@@ -79,6 +80,7 @@ export function RunRecap({ id, fresh, onBack, onStartSession }: { id: string; fr
         <div className="stat"><span className="big-num">{fmtDur(r.dur)}</span><span className="tiny muted">durée</span></div>
         {!r.indoor && <div className="stat"><span className="big-num">{fmtPace(r.dist > 50 ? r.dur / (r.dist / 1000) : undefined)}</span><span className="tiny muted">allure moy. /km</span></div>}
       </div>
+      {fresh && <SaveRunRoute run={r} />}
 
       {r.track && r.track.length > 1 && (
         <div className="card" style={{ padding: 0, overflow: 'hidden', gap: 0 }}>

@@ -4,6 +4,7 @@ import { createJSONStorage, persist, type StateStorage } from 'zustand/middlewar
 import { del, get, set } from 'idb-keyval'
 import { addDays, DEFAULT_START, noJumpsReason, OLD_START, programLevel, recentKnee, today, weekNumber } from './lib/program'
 import { autoSwaps, type SwapChoice } from './lib/variants'
+import type { RoutingState, RunRoute, SavedRoute } from './lib/routes'
 import type {
   BasketLog, FoodLog, ItemEdit, LevelEvent, Measures, RunLog, RunSplit, RunStep, SessionId, SetRecord, Settings, Swap, TestId, TestResult, Unavailable, Workout,
 } from './types'
@@ -45,6 +46,8 @@ export interface ActiveRun {
   splits: RunSplit[]
   /** Fin dépassée sans l'appli ouverte : c'est à toi de dire si la sortie compte. */
   stale?: boolean
+  /** Parcours à suivre. */
+  route?: RunRoute
 }
 
 /** Données synchronisées dans le cloud. */
@@ -93,6 +96,8 @@ interface State extends SyncedData {
   active?: ActiveSession
   activeRun?: ActiveRun
   sync: SyncState
+  /** Parcours de course : clé, départ, favoris. Reste sur le téléphone (hors synchro). */
+  routing: RoutingState
   hydrated: boolean
 
   touch: () => void
@@ -116,7 +121,11 @@ interface State extends SyncedData {
   setTest: (id: TestId, r: TestResult | undefined) => void
   setFood: (date: string, f: FoodLog) => void
   setRunStart: (d: string | undefined) => void
-  startRun: (r: Pick<ActiveRun, 'plan' | 'indoor' | 'steps'>) => void
+  startRun: (r: Pick<ActiveRun, 'plan' | 'indoor' | 'steps' | 'route'>) => void
+  setRouting: (p: Partial<RoutingState>) => void
+  saveRoute: (r: RunRoute, source: SavedRoute['source']) => string
+  renameRoute: (id: string, name: string) => void
+  deleteRoute: (id: string) => void
   patchRun: (p: Partial<ActiveRun>) => void
   finishRun: (log: Omit<RunLog, 'id' | 'date' | 'plan' | 'indoor' | 'startedAt'>) => string | undefined
   abandonRun: () => void
@@ -161,6 +170,7 @@ export const useStore = create<State>()(
         settings: DEFAULT_SETTINGS,
         updatedAt: 0,
         sync: { status: 'off' },
+        routing: { routes: [] },
         hydrated: false,
 
         touch: () => upd(() => ({})),
@@ -257,6 +267,18 @@ export const useStore = create<State>()(
           return a.id
         },
         abandonRun: () => setS({ activeRun: undefined }),
+        setRouting: (p) => setS((s) => ({ routing: { ...s.routing, ...p } })),
+        saveRoute: (r, source) => {
+          const id = uid()
+          setS((s) => {
+            const n = s.routing.routes.length + 1
+            const route: SavedRoute = { id, name: r.name && !/^Boucle [ABC]$/.test(r.name) ? r.name : `Parcours ${n} · ${(r.dist / 1000).toFixed(1).replace('.', ',')} km`, coords: r.coords, dist: r.dist, ascent: r.ascent, source, createdAt: Date.now() }
+            return { routing: { ...s.routing, routes: [...s.routing.routes, route] } }
+          })
+          return id
+        },
+        renameRoute: (id, name) => setS((s) => ({ routing: { ...s.routing, routes: s.routing.routes.map((r) => (r.id === id ? { ...r, name } : r)) } })),
+        deleteRoute: (id) => setS((s) => ({ routing: { ...s.routing, routes: s.routing.routes.filter((r) => r.id !== id) } })),
         setRunKnee: (id, k) => upd((s) => ({ runs: s.runs.map((r) => (r.id === id ? { ...r, ...k, edited: Date.now() } : r)) })),
         deleteRun: (id) => upd((s) => ({ runs: s.runs.filter((r) => r.id !== id), deleted: markDeleted(s.deleted, `run:${id}`, true) })),
 
@@ -360,7 +382,7 @@ export const useStore = create<State>()(
           if (p.runStart && p.runStart <= addDays(OLD_START, 21)) p.runStart = addDays(p.runStart, 7)
           p.updatedAt = Date.now()
         }
-        return { ...current, ...p, runs: p.runs ?? [], settings: { ...DEFAULT_SETTINGS, ...p.settings }, sync: { status: 'off', ...p.sync } }
+        return { ...current, ...p, runs: p.runs ?? [], settings: { ...DEFAULT_SETTINGS, ...p.settings }, sync: { status: 'off', ...p.sync }, routing: { routes: [], ...p.routing } }
       },
       onRehydrateStorage: () => () => useStore.setState({ hydrated: true }),
     },

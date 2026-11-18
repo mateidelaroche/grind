@@ -7,6 +7,7 @@ import { connect, disconnect, pullNow, pushNow, TOKEN_URL } from '../lib/sync'
 import { UNAVAILABLE_LABEL } from '../lib/variants'
 import { useStore } from '../store'
 import type { Settings as S, Unavailable } from '../types'
+import { RouteSettings } from './RouteViews'
 
 export default function Settings({ onLoops }: { onLoops: () => void }) {
   const s = useStore()
@@ -100,6 +101,9 @@ export default function Settings({ onLoops }: { onLoops: () => void }) {
           </SettingRow>
         )}
       </div>
+
+      <div className="section-title">Parcours de course</div>
+      <RouteSettings />
 
       <div className="section-title">Synchro cloud</div>
       <div className="card">
