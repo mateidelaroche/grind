@@ -56,6 +56,8 @@ export interface SyncedData {
   levels: Record<string, number>
   mastered: Record<string, boolean>
   timeTargets: Record<string, number>
+  /** Reps visées par emplacement d'exercice (séance, bloc, niveau) : réglées avec + / − pendant une série. */
+  repTargets?: Record<string, number>
   edits: Record<string, ItemEdit>
   overrides: Record<string, string>
   workouts: Workout[]
@@ -105,6 +107,7 @@ interface State extends SyncedData {
   setLevel: (ex: string, lvl: number) => void
   setMastered: (ex: string, v: boolean) => void
   setTimeTarget: (ex: string, s: number) => void
+  setRepTarget: (key: string, reps: number) => void
   setEdit: (key: string, e: ItemEdit | undefined) => void
   setOverride: (date: string, v: string | undefined) => void
   setBasket: (date: string, log: BasketLog | undefined) => void
@@ -182,6 +185,7 @@ export const useStore = create<State>()(
         }),
         setMastered: (ex, v) => upd((s) => ({ mastered: { ...s.mastered, [ex]: v } })),
         setTimeTarget: (ex, sec) => upd((s) => ({ timeTargets: { ...s.timeTargets, [ex]: sec } })),
+        setRepTarget: (key, reps) => upd((s) => ({ repTargets: { ...s.repTargets, [key]: reps } })),
         setEdit: (key, e) => upd((s) => {
           const edits = { ...s.edits }
           if (e) edits[key] = e
@@ -391,7 +395,7 @@ export const useStore = create<State>()(
 
 export function syncedSnapshot(s: State): SyncedData {
   return {
-    startDate: s.startDate, levels: s.levels, mastered: s.mastered, timeTargets: s.timeTargets, edits: s.edits,
+    startDate: s.startDate, levels: s.levels, mastered: s.mastered, timeTargets: s.timeTargets, repTargets: s.repTargets, edits: s.edits,
     overrides: s.overrides, workouts: s.workouts, basket: s.basket, settings: s.settings, push: s.push,
     weights: s.weights, measures: s.measures, goalWeight: s.goalWeight, tests: s.tests, levelLog: s.levelLog, food: s.food,
     runs: s.runs, runStart: s.runStart, videoLoops: s.videoLoops, flex: s.flex, unavailable: s.unavailable, planned: s.planned, deleted: s.deleted, updatedAt: s.updatedAt,

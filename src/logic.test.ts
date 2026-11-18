@@ -369,3 +369,17 @@ describe('parcours', () => {
     expect(locate(c, cum, [48.8505, 2.352], 0).seg).toBe(2)
   })
 })
+
+describe('reps réglées avec + / −', () => {
+  it('priment sur la dernière séance et le programme, par emplacement et niveau', async () => {
+    const { buildSteps, lastReps, repKey } = await import('./lib/program')
+    const steps = buildSteps('A', { week: 3, express: false, levels: {}, edits: {}, timeTargets: {} }).filter((x) => x.recKey && !x.duration && x.phase === 'main')
+    const [s1, s2] = steps.filter((x) => x.recKey === steps[0].recKey)
+    const w = { id: 'w', session: 'A', date: 'x', startedAt: 0, completed: true, sets: { [s1.recKey!]: { ex: s1.ex!, level: 0, total: 4, done: 4, reps: [9, 8, 7, 6], flags: [] } } } as never
+    expect(lastReps(s2, 'A', [w])).toBe(8)
+    const targets = { [repKey('A', s1)]: 11 }
+    expect(lastReps(s2, 'A', [w], undefined, targets)).toBe(11)
+    expect(lastReps({ ...s2, level: 2 }, 'A', [w], undefined, targets)).toBe(8)
+    expect(lastReps(s2, 'B', [], undefined, targets)).not.toBe(11)
+  })
+})

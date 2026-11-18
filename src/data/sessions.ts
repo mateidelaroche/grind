@@ -6,7 +6,7 @@ const A: Session = {
   subtitle: 'Haut du corps · Pecs / Épaules',
   kind: 'muscu',
   warmup: 'general',
-  cooldown: true,
+  cooldown: 'haut',
   duration: '~60 min',
   expressDuration: '~40 min',
   blocks: [
@@ -39,7 +39,7 @@ const B: Session = {
   subtitle: 'Haut du corps · Dos / Bras',
   kind: 'muscu',
   warmup: 'general',
-  cooldown: true,
+  cooldown: 'haut',
   duration: '~70 min',
   expressDuration: '~45 min',
   blocks: [
@@ -74,7 +74,7 @@ const C: Session = {
   subtitle: 'Jambes · Cuisses + abdos',
   kind: 'muscu',
   warmup: 'genoux',
-  cooldown: true,
+  cooldown: 'jambes',
   duration: '~55 min',
   expressDuration: '~30 min',
   blocks: [
@@ -104,7 +104,7 @@ const D: Session = {
   subtitle: 'Jambes · Arrière + sauts + abdos',
   kind: 'muscu',
   warmup: 'genoux',
-  cooldown: true,
+  cooldown: 'jambes',
   duration: '~50 min',
   expressDuration: '~35 min',
   blocks: [
@@ -135,7 +135,7 @@ const E: Session = {
   subtitle: 'Haut du corps complet',
   kind: 'muscu',
   warmup: 'general',
-  cooldown: true,
+  cooldown: 'haut',
   duration: '~55 min',
   expressDuration: '~30 min',
   blocks: [
@@ -195,20 +195,42 @@ const WARMUP: Session = {
   ],
 }
 
+/** Fin des séances du haut du corps : au sol d'abord (sans se relever entre deux), puis debout. */
 const COOLDOWN: Session = {
   id: 'COOLDOWN',
-  name: 'Retour au calme',
-  subtitle: 'Étirements doux',
+  name: 'Retour au calme · haut du corps',
+  subtitle: 'Abdos, dos, épaules, puis pecs, triceps, avant-bras · au sol puis debout',
   kind: 'routine',
   warmup: 'none',
   cooldown: false,
-  duration: '~4 min',
+  duration: '~5 min',
   blocks: [
-    { id: 'S1', rest: 0, items: [{ ex: 'st-pecs', sets: 1, duration: 30, durationLabel: '30 s / côté' }] },
+    { id: 'S1', rest: 0, items: [{ ex: 'st-cobra', sets: 1, duration: 25, durationLabel: '25 s' }] },
     { id: 'S2', rest: 0, items: [{ ex: 'st-child', sets: 1, duration: 30, durationLabel: '30 s' }] },
-    { id: 'S3', rest: 0, items: [{ ex: 'st-quad', sets: 1, duration: 30, durationLabel: '30 s / jambe' }] },
-    { id: 'S4', rest: 0, items: [{ ex: 'st-hams', sets: 1, duration: 30, durationLabel: '30 s' }] },
-    { id: 'S5', rest: 0, items: [{ ex: 'st-hip', sets: 1, duration: 30, durationLabel: '30 s / jambe' }] },
+    { id: 'S3', rest: 0, items: [{ ex: 'st-thread', sets: 1, duration: 25, durationLabel: '25 s / côté' }] },
+    { id: 'S4', rest: 0, items: [{ ex: 'st-pecs', sets: 1, duration: 30, durationLabel: '30 s / côté' }] },
+    { id: 'S5', rest: 0, items: [{ ex: 'st-triceps', sets: 1, duration: 25, durationLabel: '25 s / bras' }] },
+    { id: 'S6', rest: 0, items: [{ ex: 'st-cross', sets: 1, duration: 20, durationLabel: '20 s / bras' }] },
+    { id: 'S7', rest: 0, items: [{ ex: 'st-wrist', sets: 1, duration: 20, durationLabel: '20 s / bras' }] },
+  ],
+}
+
+/** Fin des séances jambes : allongé, assis, à genou, puis debout. */
+const COOLDOWN_J: Session = {
+  id: 'COOLDOWN_J',
+  name: 'Retour au calme · jambes',
+  subtitle: 'Abdos, fessiers, ischios, hanches, puis quadriceps, mollets · au sol puis debout',
+  kind: 'routine',
+  warmup: 'none',
+  cooldown: false,
+  duration: '~5 min',
+  blocks: [
+    { id: 'J1', rest: 0, items: [{ ex: 'st-cobra', sets: 1, duration: 25, durationLabel: '25 s' }] },
+    { id: 'J2', rest: 0, items: [{ ex: 'st-fig4', sets: 1, duration: 30, durationLabel: '30 s / jambe' }] },
+    { id: 'J3', rest: 0, items: [{ ex: 'st-hams', sets: 1, duration: 35, durationLabel: '35 s' }] },
+    { id: 'J4', rest: 0, items: [{ ex: 'st-hip', sets: 1, duration: 30, durationLabel: '30 s / jambe' }] },
+    { id: 'J5', rest: 0, items: [{ ex: 'st-quad', sets: 1, duration: 30, durationLabel: '30 s / jambe' }] },
+    { id: 'J6', rest: 0, items: [{ ex: 'st-calf', sets: 1, duration: 25, durationLabel: '25 s / jambe' }] },
   ],
 }
 
@@ -252,7 +274,7 @@ const MATIN: Session = {
   ],
 }
 
-export const SESSIONS: Record<SessionId, Session> = { A, B, C, D, E, GENOUX, BONUS, WARMUP, COOLDOWN, MATIN }
+export const SESSIONS: Record<SessionId, Session> = { A, B, C, D, E, GENOUX, BONUS, WARMUP, COOLDOWN, COOLDOWN_J, MATIN }
 export const MAIN_SESSIONS: SessionId[] = ['A', 'B', 'C', 'D', 'E']
 /** Séance avec des sauts (remplacés si le genou gêne). */
 export const JUMPS_IN = (sid: SessionId) => SESSIONS[sid].blocks.some((b) => b.items.some((it) => it.ex === 'squat-jump' || it.ex === 'pogo'))

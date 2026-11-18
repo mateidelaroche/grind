@@ -591,6 +591,28 @@ const stCross: AnimDef = {
   ),
 }
 
+// ───────────── ÉTIREMENTS DE FIN DE SÉANCE ─────────────
+/** Cobra : sur le ventre, bassin au sol, bras qui poussent la poitrine vers le haut. */
+const stCobra = breathe(
+  backLying({ p: [112, 146], t: -152, h: -162, lN: { a: [1, 1] }, lF: { a: [0, 0] }, fN: 0, fF: 0, aN: { ik: [70, FL] }, aF: { ik: [68, FL] } }),
+  { t: -144, h: -156 },
+)
+/** Aiguille : à quatre pattes, l'épaule et la tempe se posent au sol, un bras glissé dessous. */
+const stThread = breathe(
+  { p: [80, 112], t: 36, h: 40, lN: { a: [90, 180] }, lF: { a: [91, 181] }, fN: 180, fF: 180, aN: { a: [176, 178], s: 0.6 }, aF: { ik: [150, FL] } },
+  { t: 40, h: 44 },
+)
+/** Triceps : bras plié derrière la tête, l'autre main tire le coude. */
+const stTriceps = breathe(
+  stand(100, { aN: { a: [-84, 102] }, aF: { ik: { j: 'elbowN', o: [3, -2] } }, lN: { ik: [104, FL] }, lF: { ik: [97, FL] } }),
+  { aN: { a: [-80, 106] } },
+)
+/** Avant-bras : bras tendu devant, l'autre main ramène les doigts vers soi. */
+const stWrist = breathe(
+  stand(100, { aN: { a: [2, 0] }, aF: { ik: { j: 'handN', o: [-3, -4] } }, lN: { ik: [104, FL] }, lF: { ik: [97, FL] } }),
+  { aN: { a: [0, -2] } },
+)
+
 // Silhouettes guides pour les photos de progression
 const guideFace: AnimDef = {
   view: 'front', noFloor: true, dur: [1],
@@ -643,6 +665,7 @@ export const ANIMS: Record<string, AnimDef> = {
   'shadow-box': shadowBox, 'step-jack': stepJack, climber,
   'st-pecs': stPecs, 'st-child': stChild, 'st-quad': stQuad, 'st-hams': stHams, 'st-hip': stHip,
   'st-knees': stKnees, 'st-fig4': stFig4, 'st-squat': stSquat, 'st-calf': stCalf, 'st-fold': stFold, 'st-side': stSide, 'st-cross': stCross,
+  'st-cobra': stCobra, 'st-thread': stThread, 'st-triceps': stTriceps, 'st-wrist': stWrist,
 }
 
 // ───────────── Matériel selon le niveau ─────────────

@@ -82,7 +82,7 @@ export interface Block {
   restPause?: boolean
 }
 
-export type SessionId = 'A' | 'B' | 'C' | 'D' | 'E' | 'GENOUX' | 'BONUS' | 'WARMUP' | 'COOLDOWN' | 'MATIN'
+export type SessionId = 'A' | 'B' | 'C' | 'D' | 'E' | 'GENOUX' | 'BONUS' | 'WARMUP' | 'COOLDOWN' | 'COOLDOWN_J' | 'MATIN'
 
 export interface Session {
   id: SessionId
@@ -92,7 +92,8 @@ export interface Session {
   /** Durée de la séance express, échauffement et retour au calme compris. */
   expressDuration?: string
   warmup: 'general' | 'genoux' | 'none'
-  cooldown: boolean
+  /** Retour au calme en fin de séance : étirements du haut du corps ou des jambes. */
+  cooldown: false | 'haut' | 'jambes'
   blocks: Block[]
   duration: string
 }
@@ -171,6 +172,8 @@ export interface Settings {
   anim3d: boolean
   /** Démo affichée par défaut : vidéo YouTube (si en ligne) ou animation. */
   demo: 'video' | 'anim'
+  /** Expérimental : minuteur sur l'écran verrouillé (lecteur « En cours de lecture »). */
+  lockScreen?: boolean
 }
 
 export interface ItemEdit {

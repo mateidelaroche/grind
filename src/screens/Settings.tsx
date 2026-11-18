@@ -60,6 +60,9 @@ export default function Settings({ onLoops }: { onLoops: () => void }) {
         <SettingRow title="Voix" desc="Annonce l’exercice, la série et le repos">
           <Toggle on={s.settings.voice} onChange={(v) => set({ voice: v })} />
         </SettingRow>
+        <SettingRow title="Minuteur sur l’écran verrouillé (test)" desc="Séances de muscu : repos et exercices en temps dans le lecteur « En cours de lecture ». Peut mettre ta musique en pause.">
+          <Toggle on={!!s.settings.lockScreen} onChange={(v) => set({ lockScreen: v })} />
+        </SettingRow>
         <SettingRow title="Métronome de tempo" desc="Bouton ♪ sur les exos avec tempo (ex. 3-1-1)">
           <Toggle on={s.settings.metronome} onChange={(v) => set({ metronome: v })} />
         </SettingRow>

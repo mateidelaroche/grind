@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { registerSW } from 'virtual:pwa-register'
 import App from './App'
 import { unlockAudio } from './lib/audio'
+import { primeNowPlaying } from './lib/nowplaying'
 import { startAutoSync } from './lib/sync'
 import { useStore } from './store'
 import './styles.css'
@@ -27,6 +28,9 @@ if (import.meta.env.DEV) {
 // Sur écran tactile, le geste n'est reconnu qu'au relâchement du doigt.
 window.addEventListener('pointerup', unlockAudio)
 window.addEventListener('touchend', unlockAudio)
+// Écran verrouillé (expérimental) : la piste silencieuse ne peut démarrer que sur un geste.
+window.addEventListener('pointerup', primeNowPlaying)
+window.addEventListener('touchend', primeNowPlaying)
 
 const unsub = useStore.subscribe((s) => {
   if (s.hydrated) { unsub(); startAutoSync(); applyUpdate() }

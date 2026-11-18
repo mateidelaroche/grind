@@ -201,7 +201,13 @@ export function swapAt(list: Swap[] | undefined, round: number): Swap | undefine
 }
 
 /** Reps proposées : celles de la dernière fois sur la même série de la même séance, sinon le bas de la fourchette. */
-export function lastReps(st: Step, session: string, workouts: Workout[], excludeId?: string): number {
+/** Clé des reps visées : même exercice, même emplacement de la même séance, même niveau. */
+export const repKey = (session: string, st: Step) => `${session}:${st.recKey}@${st.level ?? 0}`
+
+/** Reps proposées pour une série : celles réglées avec + / − en priorité, sinon la dernière séance, sinon le programme. */
+export function lastReps(st: Step, session: string, workouts: Workout[], excludeId?: string, targets?: Record<string, number>): number {
+  const t = st.recKey ? targets?.[repKey(session, st)] : undefined
+  if (t !== undefined) return t
   for (let k = workouts.length - 1; k >= 0; k--) {
     const w = workouts[k]
     if (w.id === excludeId || w.session !== session) continue
@@ -297,7 +303,7 @@ export function buildSteps(sid: SessionId, o: BuildOpts): Step[] {
   if (s.warmup === 'general') steps.push(...stepsFor('WARMUP', 'warmup', o))
   if (s.warmup === 'genoux') steps.push(...stepsFor('GENOUX', 'warmup', o))
   steps.push(...stepsFor(sid, 'main', o))
-  if (s.cooldown) steps.push(...stepsFor('COOLDOWN', 'cooldown', o))
+  if (s.cooldown) steps.push(...stepsFor(s.cooldown === 'jambes' ? 'COOLDOWN_J' : 'COOLDOWN', 'cooldown', o))
   return steps
 }
 

@@ -10,8 +10,9 @@ import { workOf } from '../data/muscles'
 import { IconBack, IconCheck, IconClose, IconGuided, IconInfo, IconList, IconMetro, IconNext, IconPause, IconPlay } from '../components/icons'
 import { fmtTime, GearChips, Sheet, toast } from '../components/ui'
 import { beep, keepAwake, say, unlockAudio } from '../lib/audio'
-import { animOf, buildSteps, gearForExercise, lastReps, levelOf, sessionGear, today, videoOf, weekNumber, type Step } from '../lib/program'
+import { animOf, buildSteps, gearForExercise, lastReps, levelOf, repKey, sessionGear, today, videoOf, weekNumber, type Step } from '../lib/program'
 import { useCountdown, useMetronome } from '../lib/timer'
+import { showNowPlaying, startNowPlaying, stopNowPlaying } from '../lib/nowplaying'
 import { clashes, problemsFor, type SwapChoice } from '../lib/variants'
 import { useStore, type ActiveSession } from '../store'
 import type { Swap } from '../types'
@@ -84,7 +85,10 @@ function upcoming(steps: Step[], from: number): Step[] {
 export function RestTimer({ seconds, resetKey, onDone, next = [], feedback, nav, onVariant }: {
   seconds: number; resetKey: string; onDone: () => void; next?: Step[]; feedback?: React.ReactNode; nav?: Nav; onVariant?: (st: Step) => (() => void) | undefined
 }) {
-  const t = useCountdown(seconds, { autoStart: true, resetKey, onEnd: () => { say('C’est reparti'); onDone() } })
+  const t = useCountdown(seconds, {
+    autoStart: true, resetKey, onEnd: () => { say('C’est reparti'); onDone() },
+    np: { title: 'Repos', artist: next[0] ? `Ensuite : ${stepTitle(next[0])}${next[0].rounds && next[0].rounds > 1 ? ` · série ${next[0].round}/${next[0].rounds}` : ''}` : 'Grind', onNext: onDone },
+  })
   const [open, setOpen] = useState<Step>()
   return (
     <div className="workout-body wk rest">
@@ -134,7 +138,12 @@ function TimedWork({ step, onDone, nav }: { step: Step; onDone: (held: number) =
   // Les étapes sont figées pour la séance : l'objectif à jour se lit ici, pour que le changement vaille aussi aux tours suivants.
   const duration = useStore((s) => (step.ex ? s.timeTargets[step.ex] : undefined)) ?? step.duration ?? 30
   const totalRef = useRef(duration)
-  const t = useCountdown(duration, { prep: 3, autoStart: !!step.autoStart, resetKey: step.key, onEnd: () => onDone(totalRef.current) })
+  const t = useCountdown(duration, {
+    prep: 3, autoStart: !!step.autoStart, resetKey: step.key, onEnd: () => onDone(totalRef.current),
+    np: { title: `${stepTitle(step)}${step.side ? ` · ${step.side}` : ''}`, artist: step.rounds && step.rounds > 1 ? `Série ${step.round}/${step.rounds}` : 'Grind', onNext: () => onDone(Math.round(totalRef.current - tRef.current)) },
+  })
+  const tRef = useRef(0)
+  tRef.current = t.state === 'idle' ? t.total : t.remaining
   totalRef.current = t.total
   const running = t.state === 'run' || t.state === 'prep'
   const changeTarget = (d: number) => {
@@ -268,8 +277,17 @@ function WorkStep({ st, active, done, nav, superset, onVariant, onValidate, onUn
   const counted = !!st.recKey && !st.duration
   // Série déjà validée : on réaffiche les reps réellement faites.
   const doneReps = useStore((s) => (st.recKey ? s.workouts.find((w) => w.id === active.workoutId)?.sets[st.recKey]?.reps?.[(st.recRound ?? st.round ?? 1) - 1] : undefined))
-  const [reps, setReps] = useState(() => (counted ? lastReps(st, active.session, useStore.getState().workouts, active.workoutId) : 0))
+  const [reps, setReps] = useState(() => (counted ? lastReps(st, active.session, useStore.getState().workouts, active.workoutId, useStore.getState().repTargets) : 0))
+  const setRepTarget = useStore((s) => s.setRepTarget)
+  const [changed, setChanged] = useState(false)
+  // + / − : les séries suivantes de cet exercice et tes prochaines séances partent de ce nombre.
+  const changeReps = (v: number) => { setReps(v); setChanged(true); if (st.recKey) setRepTarget(repKey(active.session, st), v) }
   useMetronome(st.item?.tempo, metro)
+  // Écran verrouillé : l'exercice en cours (les exercices en temps publient leur propre minuteur).
+  useEffect(() => {
+    if (st.duration) return
+    showNowPlaying({ title: `${ex.name}${st.side ? ` · ${st.side}` : ''}`, artist: [st.rounds! > 1 ? `Série ${st.round}/${st.rounds}` : '', st.item?.reps ? `Objectif ${st.item.reps}` : ''].filter(Boolean).join(' · ') || 'Grind' })
+  }, [st.key]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const perSide = st.item?.reps?.includes('/') ? st.item.reps.split('/ ')[1] : lvl?.uni
   const unit = `reps${perSide ? ' / ' + perSide : ''}`
@@ -315,11 +333,12 @@ function WorkStep({ st, active, done, nav, superset, onVariant, onValidate, onUn
         <>
           <div className="wk-center">
             {counted && !done ? (
-              <RepsPad value={reps} onChange={setReps} unit={unit} />
+              <RepsPad value={reps} onChange={changeReps} unit={unit} />
             ) : (
               <div className="reps-val"><b>{done && doneReps !== undefined ? doneReps : st.item?.reps?.split(' ')[0]}</b><small>{done && doneReps !== undefined ? `${unit} faites` : unit}</small></div>
             )}
             {detail && <div className="small muted center">{detail}</div>}
+            {changed && !done && <div className="tiny muted center">↻ Les séries suivantes et tes prochaines séances partiront de {reps}</div>}
             {done && <button className="btn sm ghost" onClick={onUnvalidate}>Annuler la validation</button>}
           </div>
           <ActionBar nav={nav}>
@@ -476,6 +495,7 @@ export default function Workout({ onFinished }: { onFinished: (id: string) => vo
   const abandonWorkout = useStore((s) => s.abandonWorkout)
   const steps = useSteps(active)
   const [started, setStarted] = useState(active.stepIndex > 0 || Object.keys(active.done).length > 0)
+  useEffect(() => { startNowPlaying(); return stopNowPlaying }, [])
   const [quit, setQuit] = useState(false)
   const [variantOf, setVariantOf] = useState<Step>()
 

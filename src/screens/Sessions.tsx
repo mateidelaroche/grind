@@ -11,7 +11,7 @@ import { workOfSession } from '../data/muscles'
 import MuscleMap from '../components/MuscleMap'
 
 const MAIN: SessionId[] = MAIN_SESSIONS
-const ROUTINES: SessionId[] = ['MATIN', 'GENOUX', 'WARMUP', 'COOLDOWN']
+const ROUTINES: SessionId[] = ['MATIN', 'GENOUX', 'WARMUP', 'COOLDOWN', 'COOLDOWN_J']
 
 export function SessionsList({ onOpen, onStart, onRunProgram }: { onOpen: (s: SessionId) => void; onStart: (s: SessionId, express: boolean) => void; onRunProgram: () => void }) {
   return (

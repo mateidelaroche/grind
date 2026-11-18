@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { beep, say } from './audio'
+import { showNowPlaying } from './nowplaying'
 
 export type TimerState = 'idle' | 'prep' | 'run' | 'paused' | 'done'
 
@@ -9,13 +10,15 @@ interface Opts {
   autoStart?: boolean
   onEnd?: () => void
   resetKey: string
+  /** Affichage sur l'écran verrouillé (expérimental). */
+  np?: { title: string; artist: string; onNext?: () => void }
 }
 
 /**
  * Chrono basé sur l'heure de fin (et non sur des ticks) : si iOS met l'appli en pause,
  * le temps restant est juste quand tu reviens.
  */
-export function useCountdown(duration: number, { prep = 0, autoStart = false, onEnd, resetKey }: Opts) {
+export function useCountdown(duration: number, { prep = 0, autoStart = false, onEnd, resetKey, np }: Opts) {
   const [state, setState] = useState<TimerState>('idle')
   const [remaining, setRemaining] = useState(duration)
   const [total, setTotal] = useState(duration)
@@ -98,6 +101,23 @@ export function useCountdown(duration: number, { prep = 0, autoStart = false, on
       setRemaining(pausedLeft.current)
     } else setRemaining(totalRef.current)
   }
+  // Écran verrouillé : on publie à chaque changement d'état ou de durée, la barre avance ensuite toute seule.
+  const npRef = useRef(np)
+  npRef.current = np
+  useEffect(() => {
+    const n = npRef.current
+    if (!n) return
+    const st = stateRef.current
+    if (st === 'idle' || st === 'done') { showNowPlaying({ title: n.title, artist: n.artist, onNext: n.onNext }); return }
+    const left = st === 'paused' ? pausedLeft.current : (endAt.current - Date.now()) / 1000
+    showNowPlaying({
+      title: st === 'prep' ? `Prépare-toi · ${n.title}` : n.title, artist: n.artist,
+      dur: st === 'prep' ? prep : totalRef.current, left, paused: st === 'paused',
+      onPause: pause, onPlay: resume, onNext: n.onNext,
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state, total, resetKey])
+
   const prepLeft = state === 'prep' ? Math.max(0, Math.ceil((endAt.current - Date.now()) / 1000)) : 0
 
   return { state, remaining, total, prepLeft, start, pause, resume, add }

@@ -25,7 +25,7 @@ function useLines(session: SessionId, date: string) {
       const timed = !!st.duration
       lines.push({
         recKey: st.recKey, ex: st.ex!, level: st.level ?? 0, total: st.rounds ?? 1, timed, done: st.rounds ?? 1,
-        value: timed ? st.duration! : lastReps(st, session, s.workouts),
+        value: timed ? st.duration! : lastReps(st, session, s.workouts, undefined, s.repTargets),
       })
     }
     return lines
